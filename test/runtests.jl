@@ -26,3 +26,23 @@ BitIntegers.@define_integers 8  MyInt8 MyUInt8
 end
 
 end # module TestBitIntegers
+
+
+@testset "types are defined" begin
+    for (T, s) = (Int256 => 256, Int512 => 512, Int1024 => 1024)
+        @test sizeof(T) * 8 == s
+        @test T <: Signed
+        @test T <: BitIntegers.BitSigned
+        @test T <: BitIntegers.BitInteger
+        @test T ∈ BitIntegers.BitSigned_types
+        @test T ∈ BitIntegers.BitInteger_types
+    end
+    for (T, s) = (UInt256 => 256, UInt512 => 512, UInt1024 => 1024)
+        @test sizeof(T) * 8 == s
+        @test T <: Unsigned
+        @test T <: BitIntegers.BitUnsigned
+        @test T <: BitIntegers.BitInteger
+        @test T ∈ BitIntegers.BitUnsigned_types
+        @test T ∈ BitIntegers.BitInteger_types
+    end
+end
