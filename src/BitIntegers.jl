@@ -2,7 +2,9 @@
 
 module BitIntegers
 
-import Base: promote_rule, rem, unsigned
+import Base: <, <=, ==, promote_rule, rem, unsigned
+
+using Base: sle_int, slt_int, ule_int, ult_int
 
 using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
@@ -169,6 +171,22 @@ end
         Y
     end
 end
+
+
+# * comparisons
+
+(<)(x::T, y::T) where {T<:XBU} = ult_int(x, y)
+(<)(x::T, y::T) where {T<:XBS} = slt_int(x, y)
+
+(<=)(x::T, y::T) where {T<:XBU} = ule_int(x, y)
+(<=)(x::T, y::T) where {T<:XBS} = sle_int(x, y)
+
+==(x::UBS, y::UBU) = (x >= 0) & (unsigned(x) == y)
+==(x::UBU, y::UBS) = (y >= 0) & (x == unsigned(y))
+<( x::UBS, y::UBU) = (x <  0) | (unsigned(x) <  y)
+<( x::UBU, y::UBS) = (y >= 0) & (x <  unsigned(y))
+<=(x::UBS, y::UBU) = (x <  0) | (unsigned(x) <= y)
+<=(x::UBU, y::UBS) = (y >= 0) & (x <= unsigned(y))
 
 
 end # module

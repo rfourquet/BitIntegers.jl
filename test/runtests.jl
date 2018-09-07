@@ -122,3 +122,19 @@ end
         @test x % Y % X === x
     end
 end
+
+
+@testset "comparisons" begin
+    i, j = sort!(rand(0:typemax(Int8), 2))
+    i == j && ((i, j) = (2, 3))
+    for (X, Y) in TypeCombos
+        x, y = X(i), Y(j)
+        @test x < y
+        @test x <= y
+        @test x != y
+        @test y > x
+        @test y >= x
+        @test x == Y(i)
+        @test y == X(j)
+    end
+end
