@@ -2,10 +2,10 @@
 
 module BitIntegers
 
-import Base: unsigned, promote_rule
+import Base: promote_rule, rem, unsigned
 
 using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
-            zext_int
+            trunc_int, zext_int
 
 
 # * types definition & aliases
@@ -137,6 +137,24 @@ end
                 :(checked_trunc_sint(T, check_top_bit(x)))
             end
         end
+    end
+end
+
+@generated function rem(x::Union{UBI,Bool}, ::Type{to}) where {to<:UBI}
+    from = x
+    to === from && return :x # this replaces Base's method for BBI
+    if to.size < from.size
+        :(trunc_int(to, x))
+    elseif from === Bool
+        :(convert(to, x))
+    elseif from.size < to.size
+        if from <: Signed
+            :(sext_int(to, x))
+        else
+            :(convert(to, x))
+        end
+    else
+        :(bitcast(to, x))
     end
 end
 

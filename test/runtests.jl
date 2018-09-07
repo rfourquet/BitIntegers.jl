@@ -4,8 +4,10 @@ const BInts = Base.BitInteger_types
 const XInts = BitIntegers.BitInteger_types
 const Ints = (BInts..., XInts...)
 
-# we don't include Base-only type combinations:
-const TypeCombos = tuple(((X, Y) for X in Ints for Y in (X ∈ BInts ? XInts : Ints))...)
+# we don't include most Base-only type combinations:
+const TypeCombos =
+    tuple(((X, Y) for X in Ints for Y in (X ∈ BInts ? XInts : Ints))..., (Int, Int),
+          (Int, UInt), (UInt, Int), (UInt, UInt))
 
 
 module TestBitIntegers
@@ -107,5 +109,15 @@ end
         else
             @test T == Y
         end
+    end
+end
+
+@testset "x % T" begin
+    i = rand(0:typemax(Int8))
+    for (X, Y) in TypeCombos
+        x = X(i)
+        @test x % Y isa Y
+        @test x % Y == x
+        @test x % Y % X === x
     end
 end
