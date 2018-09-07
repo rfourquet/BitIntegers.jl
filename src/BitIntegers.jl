@@ -2,6 +2,8 @@
 
 module BitIntegers
 
+import Base: unsigned
+
 using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
             zext_int
 
@@ -26,6 +28,11 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
     quote
         primitive type $SI <: AbstractBitSigned   $n end
         primitive type $UI <: AbstractBitUnsigned $n end
+
+        Base.Signed(x::$(esc(UI)))   = $(esc(SI))(x)
+        Base.Unsigned(x::$(esc(SI))) = $(esc(UI))(x)
+        Base.uinttype(::Type{$(esc(SI))}) = $(esc(UI))
+        Base.uinttype(::Type{$(esc(UI))}) = $(esc(UI))
     end
 end
 
@@ -76,6 +83,8 @@ const UBI = Union{BBI,XBI}
 
 
 # * conversions
+
+unsigned(x::XBS) = reinterpret(typeof(convert(Unsigned, zero(x))), x)
 
 # U -> X
 (::Type{T})(x::Union{UBI,Bool}) where {T<:XBI} = convertto(T, x)::T

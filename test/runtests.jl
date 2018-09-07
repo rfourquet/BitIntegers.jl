@@ -52,17 +52,44 @@ end
 
 
 @testset "conversions" begin
-    for X in Ints
-        # we don't test Base-only type combinations:
-        for Y in (X ∈ BInts ? XInts : Ints)
-            @test Y(42) === Y(X(42))
-            if sizeof(X) * 8 >= 128 > sizeof(Y) * 8
-                x = X(UInt128(1) << 127)
-                @test_throws InexactError Y(x)
+    @testset "between types" begin
+        for X in Ints
+            # we don't test Base-only type combinations:
+            for Y in (X ∈ BInts ? XInts : Ints)
+                @test Y(42) === Y(X(42))
+                if sizeof(X) * 8 >= 128 > sizeof(Y) * 8
+                    x = X(UInt128(1) << 127)
+                    @test_throws InexactError Y(x)
+                end
+                if X <: Signed && Y <: Unsigned
+                    x = X(-1)
+                    @test_throws InexactError Y(x)
+                end
             end
-            if X <: Signed && Y <: Unsigned
-                x = X(-1)
-                @test_throws InexactError Y(x)
+        end
+    end
+    @testset "signedness" begin
+        for X in XInts
+            XU = Base.uinttype(X)
+            @test XU <: Unsigned
+            x = X(1)
+            @test x isa X
+            xu = convert(Unsigned, x)
+            xs = convert(Signed, x)
+            @test xu isa XU
+            @test xu === Unsigned(x) === unsigned(x)
+            @test xs === Signed(x) === signed(x)
+            if X <: Signed
+                @test sizeof(X) == sizeof(XU)
+                @test X !== XU
+                @test x === xs
+            else
+                @test X === XU
+                @test x === xu
+            end
+            if X <: Signed
+                @test_throws InexactError Unsigned(X(-1))
+                @test unsigned(X(-1)) isa XU
             end
         end
     end
