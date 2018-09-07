@@ -1,14 +1,5 @@
 using BitIntegers, Test
 
-const BInts = Base.BitInteger_types
-const XInts = BitIntegers.BitInteger_types
-const Ints = (BInts..., XInts...)
-
-# we don't include most Base-only type combinations:
-const TypeCombos =
-    tuple(((X, Y) for X in Ints for Y in (X ∈ BInts ? XInts : Ints))..., (Int, Int),
-          (Int, UInt), (UInt, Int), (UInt, UInt))
-
 
 module TestBitIntegers
 
@@ -36,6 +27,15 @@ end
 
 end # module TestBitIntegers
 
+const BInts = Base.BitInteger_types
+const XInts = (BitIntegers.BitInteger_types..., TestBitIntegers.UInt24, TestBitIntegers.Int24)
+const Ints = (BInts..., XInts...)
+
+# we don't include most Base-only type combinations:
+const TypeCombos =
+    [((X, Y) for X in Ints for Y in (X ∈ BInts ? XInts : Ints))...,
+     (Int, Int), (Int, UInt), (UInt, Int), (UInt, UInt)]
+
 
 @testset "types are defined" begin
     for (T, s) = (Int256 => 256, Int512 => 512, Int1024 => 1024)
@@ -62,7 +62,7 @@ end
         for (X, Y) in TypeCombos
             @test Y(42) === Y(X(42))
             if sizeof(X) * 8 >= 128 > sizeof(Y) * 8
-                x = X(UInt128(1) << 127)
+                x = X(UInt128(1) << 126)
                 @test_throws InexactError Y(x)
             end
             if X <: Signed && Y <: Unsigned
@@ -111,6 +111,7 @@ end
         end
     end
 end
+
 
 @testset "x % T" begin
     i = rand(0:typemax(Int8))
