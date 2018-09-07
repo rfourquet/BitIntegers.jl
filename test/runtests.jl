@@ -1,5 +1,8 @@
 using BitIntegers, Test
 
+const BInts = Base.BitInteger_types
+const XInts = BitIntegers.BitInteger_types
+const Ints = (BInts..., XInts...)
 
 module TestBitIntegers
 
@@ -44,5 +47,23 @@ end # module TestBitIntegers
         @test T <: BitIntegers.BitInteger
         @test T ∈ BitIntegers.BitUnsigned_types
         @test T ∈ BitIntegers.BitInteger_types
+    end
+end
+
+
+@testset "conversions" begin
+    for X in Ints
+        # we don't test Base-only type combinations:
+        for Y in (X ∈ BInts ? XInts : Ints)
+            @test Y(42) === Y(X(42))
+            if sizeof(X) * 8 >= 128 > sizeof(Y) * 8
+                x = X(UInt128(1) << 127)
+                @test_throws InexactError Y(x)
+            end
+            if X <: Signed && Y <: Unsigned
+                x = X(-1)
+                @test_throws InexactError Y(x)
+            end
+        end
     end
 end
