@@ -4,6 +4,10 @@ const BInts = Base.BitInteger_types
 const XInts = BitIntegers.BitInteger_types
 const Ints = (BInts..., XInts...)
 
+# we don't include Base-only type combinations:
+const TypeCombos = tuple(((X, Y) for X in Ints for Y in (X ∈ BInts ? XInts : Ints))...)
+
+
 module TestBitIntegers
 
 using BitIntegers, Test
@@ -53,18 +57,15 @@ end
 
 @testset "conversions" begin
     @testset "between types" begin
-        for X in Ints
-            # we don't test Base-only type combinations:
-            for Y in (X ∈ BInts ? XInts : Ints)
-                @test Y(42) === Y(X(42))
-                if sizeof(X) * 8 >= 128 > sizeof(Y) * 8
-                    x = X(UInt128(1) << 127)
-                    @test_throws InexactError Y(x)
-                end
-                if X <: Signed && Y <: Unsigned
-                    x = X(-1)
-                    @test_throws InexactError Y(x)
-                end
+        for (X, Y) in TypeCombos
+            @test Y(42) === Y(X(42))
+            if sizeof(X) * 8 >= 128 > sizeof(Y) * 8
+                x = X(UInt128(1) << 127)
+                @test_throws InexactError Y(x)
+            end
+            if X <: Signed && Y <: Unsigned
+                x = X(-1)
+                @test_throws InexactError Y(x)
             end
         end
     end
@@ -91,6 +92,20 @@ end
                 @test_throws InexactError Unsigned(X(-1))
                 @test unsigned(X(-1)) isa XU
             end
+        end
+    end
+end
+
+
+@testset "promote_rule" begin
+    for (X, Y) in TypeCombos
+        T = promote_type(X, Y)
+        if X.size > Y.size
+            @test T === X
+        elseif X.size == Y.size
+            @test T === (X <: Unsigned ? X : Y)
+        else
+            @test T == Y
         end
     end
 end

@@ -2,7 +2,7 @@
 
 module BitIntegers
 
-import Base: unsigned
+import Base: unsigned, promote_rule
 
 using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
             zext_int
@@ -82,7 +82,7 @@ const UBU = Union{BBU,XBU}
 const UBI = Union{BBI,XBI}
 
 
-# * conversions
+# * conversions, promotions
 
 unsigned(x::XBS) = reinterpret(typeof(convert(Unsigned, zero(x))), x)
 
@@ -137,6 +137,18 @@ end
                 :(checked_trunc_sint(T, check_top_bit(x)))
             end
         end
+    end
+end
+
+@generated function promote_rule(::Type{X}, ::Type{Y}) where {X<:XBI,Y<:UBI}
+    if X.size > Y.size
+        X
+    elseif X.size == Y.size
+        X <: Unsigned ?
+            X :
+            Y
+    else
+        Y
     end
 end
 
