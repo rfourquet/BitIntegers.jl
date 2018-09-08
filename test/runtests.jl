@@ -57,6 +57,20 @@ const TypeCombos =
 end
 
 
+@testset "typemin, typemax" begin
+    for X in XInts
+        @test typemin(X) < typemax(X)
+        if X <: Unsigned
+            @test typemin(X) == 0
+            @test count_ones(typemax(X)) == 8 * sizeof(X)
+        else
+            @test typemin(X) < 0 && typemax(X) > 0
+            # @test typemin(X) - 1 == typemax(X)
+        end
+    end
+end
+
+
 @testset "conversions" begin
     @testset "between types" begin
         for (X, Y) in TypeCombos

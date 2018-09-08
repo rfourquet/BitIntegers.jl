@@ -3,10 +3,10 @@
 module BitIntegers
 
 import Base: &, <, <<, <=, ==, >>, >>>, |, ~, bswap, count_ones, leading_zeros, promote_rule,
-             rem, trailing_zeros, unsigned, xor
+             rem, trailing_zeros, typemax, typemin, unsigned, xor
 
 using Base: and_int, ashr_int, bswap_int, ctlz_int, ctpop_int, cttz_int, lshr_int, not_int,
-            or_int, shl_int, sle_int, slt_int, ule_int, ult_int, xor_int
+            or_int, shl_int, sle_int, slt_int, uinttype, ule_int, ult_int, xor_int
 
 using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
@@ -84,6 +84,15 @@ const XBI = Union{XBS,XBU}
 const UBS = Union{BBS,XBS}
 const UBU = Union{BBU,XBU}
 const UBI = Union{BBI,XBI}
+
+
+# ** typemin, typemax
+
+typemin(::Type{T}) where {T<:XBU} = convert(T, 0)
+typemax(::Type{T}) where {T<:XBU} = ~convert(T, 0)
+
+typemin(::Type{T}) where {T<:XBS} = convert(T, 1) << (sizeof(T)*8-1)
+typemax(::Type{T}) where {T<:XBS} = bitcast(T, typemax(uinttype(T)) >> 1)
 
 
 # * conversions, promotions
