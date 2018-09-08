@@ -138,3 +138,44 @@ end
         @test y == X(j)
     end
 end
+
+
+@testset "bit operations" begin
+    i, j = rand(1:Int(typemax(Int8)), 2)
+    k, l = rand(Int(typemin(Int8)):-1, 2)
+    for X in XInts
+        for op in (~, bswap)
+            if sizeof(X) % 2 != 0 && op == bswap
+                @test_throws ErrorException op(X(i))
+                continue
+            end
+            x = op(X(i))
+            @test x isa X
+            @test x != X(i) # we assume sizeof(X) > 8
+            @test op(x) == X(i)
+        end
+        for op in (count_ones, leading_zeros, trailing_zeros, leading_ones, trailing_ones)
+            r = op(X(i))
+            @test r isa Int
+            if op ∈ (count_ones, trailing_ones, trailing_zeros, leading_ones)
+                @test r === op(i)
+            else # leading_zeros
+                @test r == op(i) + 8 * (sizeof(X) - sizeof(i))
+            end
+        end
+    end
+    for (X, Y) in TypeCombos
+        T = promote_type(X, Y)
+        for n = (i, k), m = (j, l)
+            if n < 0 && X <: Unsigned || m < 0 && Y <: Unsigned
+                continue
+            end
+            x, y = X(n), Y(m)
+            for op in (&, |, xor)
+                z = op(x, y)
+                @test z isa T
+                @test signed(z) == op(n, m)
+            end
+        end
+    end
+end

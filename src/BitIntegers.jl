@@ -2,9 +2,11 @@
 
 module BitIntegers
 
-import Base: <, <=, ==, promote_rule, rem, unsigned
+import Base: &, <, <<, <=, ==, >>, >>>, |, ~, bswap, count_ones, leading_zeros, promote_rule,
+             rem, trailing_zeros, unsigned, xor
 
-using Base: sle_int, slt_int, ule_int, ult_int
+using Base: and_int, ashr_int, bswap_int, ctlz_int, ctpop_int, cttz_int, lshr_int, not_int,
+            or_int, shl_int, sle_int, slt_int, ule_int, ult_int, xor_int
 
 using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
@@ -188,5 +190,34 @@ end
 <=(x::UBS, y::UBU) = (x <  0) | (unsigned(x) <= y)
 <=(x::UBU, y::UBS) = (y >= 0) & (x <= unsigned(y))
 
+
+# * bit operations
+
+(~)(x::XBI) = not_int(x)
+(&)(x::T, y::T) where {T<:XBI} = and_int(x, y)
+(|)(x::T, y::T) where {T<:XBI} = or_int(x, y)
+xor(x::T, y::T) where {T<:XBI} = xor_int(x, y)
+
+>>( x::UBS, y::UBU) = ashr_int(x, y)
+>>( x::UBU, y::UBU) = lshr_int(x, y)
+>>>(x::UBI, y::UBU) = lshr_int(x, y)
+<<( x::UBI, y::UBU) = shl_int(x, y)
+
+>>( x::UBI, y::Int) = ifelse(0 <= y, x >> unsigned(y),  x << unsigned(-y))
+<<( x::UBI, y::Int) = ifelse(0 <= y, x << unsigned(y),  x >> unsigned(-y))
+>>>(x::UBI, y::Int) = ifelse(0 <= y, x >>> unsigned(y), x << unsigned(-y))
+
+count_ones(    x::XBI) = Int(ctpop_int(x))
+leading_zeros( x::XBI) = Int(ctlz_int(x))
+trailing_zeros(x::XBI) = Int(cttz_int(x))
+
+function bswap(x::XBI)
+    if sizeof(x) % 2 != 0
+        # llvm instruction is invalid
+        error("unimplemented")
+    else
+        bswap_int(x)
+    end
+end
 
 end # module
