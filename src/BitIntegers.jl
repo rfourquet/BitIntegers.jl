@@ -2,11 +2,12 @@
 
 module BitIntegers
 
-import Base: &, <, <<, <=, ==, >>, >>>, |, ~, bswap, count_ones, leading_zeros, promote_rule,
-             rem, trailing_zeros, typemax, typemin, unsigned, xor
+import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, bswap, count_ones, leading_zeros,
+             promote_rule, rem, trailing_zeros, typemax, typemin, unsigned, xor
 
-using Base: and_int, ashr_int, bswap_int, ctlz_int, ctpop_int, cttz_int, lshr_int, not_int,
-            or_int, shl_int, sle_int, slt_int, uinttype, ule_int, ult_int, xor_int
+using Base: add_int, and_int, ashr_int, bswap_int, ctlz_int, ctpop_int, cttz_int, lshr_int,
+            mul_int, neg_int, not_int, or_int, shl_int, sle_int, slt_int, sub_int, uinttype,
+            ule_int, ult_int, xor_int
 
 using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
@@ -228,5 +229,14 @@ function bswap(x::XBI)
         bswap_int(x)
     end
 end
+
+
+# * arithmetic operations
+
+(-)(x::XBI)                    = neg_int(x)
+(-)(x::T, y::T) where {T<:XBI} = sub_int(x, y)
+(+)(x::T, y::T) where {T<:XBI} = add_int(x, y)
+(*)(x::T, y::T) where {T<:XBI} = mul_int(x, y)
+
 
 end # module

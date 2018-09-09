@@ -193,3 +193,14 @@ end
         end
     end
 end
+
+
+@testset "arithmetic operations" begin
+    for (X, Y) in TypeCombos
+        T = promote_type(X, Y)
+        for op = (-, +, *)
+            @test op(X(3), Y(2)) isa T
+            @test op(X(3), Y(2)) == op(3, 2)
+        end
+    end
+end
