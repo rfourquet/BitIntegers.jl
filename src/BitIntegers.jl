@@ -3,13 +3,13 @@
 module BitIntegers
 
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, bswap, count_ones, div, flipsign,
-             leading_zeros, mod, promote_rule, rem, trailing_zeros, typemax, typemin,
-             unsigned, xor
+             leading_zeros, mod, ndigits0zpb, promote_rule, rem, trailing_zeros, typemax,
+             typemin, unsigned, xor
 
 using Base: add_int, and_int, ashr_int, bswap_int, checked_sdiv_int, checked_srem_int,
             checked_udiv_int, checked_urem_int, ctlz_int, ctpop_int, cttz_int, flipsign_int,
-            lshr_int, mul_int, neg_int, not_int, or_int, shl_int, sle_int, slt_int, sub_int,
-            uinttype, ule_int, ult_int, xor_int
+            lshr_int, mul_int, ndigits0z, ndigits0znb, neg_int, not_int, or_int, shl_int,
+            sle_int, slt_int, sub_int, uinttype, ule_int, ult_int, xor_int
 
 using Base.GMP: ispos, Limb
 
@@ -294,5 +294,37 @@ div(x::T, y::T) where {T<:XBS} = sizeof(T) > 16 ? T(div(big(x), big(y))) : check
 rem(x::T, y::T) where {T<:XBS} = sizeof(T) > 16 ? T(rem(big(x), big(y))) : checked_srem_int(x, y)
 div(x::T, y::T) where {T<:XBU} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_udiv_int(x, y)
 rem(x::T, y::T) where {T<:XBU} = sizeof(T) > 16 ? T(rem(big(x), big(y))) : checked_urem_int(x, y)
+
+
+# * misc
+
+function ndigits0zpb(x::XBU, b::Int)
+    # precondition: b > 1
+    x == 0 && return 0
+    b < 0   && return ndigits0znb(signed(x), b)
+    b == 2  && return sizeof(x)<<3 - leading_zeros(x)
+    b == 8  && return (sizeof(x)<<3 - leading_zeros(x) + 2) ÷ 3
+    b == 16 && return sizeof(x)<<1 - leading_zeros(x)>>2
+    # b == 10 && return ndigits0z(x) # TODO: implement ndigits0z(x)
+
+    d = 0
+    while x > typemax(Int)
+        x = div(x,b)
+        d += 1
+    end
+    x = div(x,b)
+    d += 1
+
+    m = 1
+    while m <= x
+        m *= b
+        d += 1
+    end
+    return d
+end
+
+ndigits0zpb(x::XBS, b::Integer) = ndigits0zpb(unsigned(abs(x)), Int(b))
+ndigits0zpb(x::XBU, b::Integer) = ndigits0zpb(x, Int(b))
+
 
 end # module
