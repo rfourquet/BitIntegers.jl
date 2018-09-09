@@ -206,3 +206,16 @@ end
         end
     end
 end
+
+
+@testset "BigInt" begin
+    r = -big(2)^2000:big(2)^2000
+    b = rand(r)
+    for X in XInts
+        x = b % X
+        @test x isa X
+        if typemin(X) <= b <= typemax(X)
+            @test x == b
+        end
+    end
+end
