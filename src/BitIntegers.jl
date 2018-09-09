@@ -2,13 +2,14 @@
 
 module BitIntegers
 
-import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, bswap, count_ones, flipsign,
-             leading_zeros, promote_rule, rem, trailing_zeros, typemax, typemin, unsigned,
-             xor
+import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, bswap, count_ones, div, flipsign,
+             leading_zeros, mod, promote_rule, rem, trailing_zeros, typemax, typemin,
+             unsigned, xor
 
-using Base: add_int, and_int, ashr_int, bswap_int, ctlz_int, ctpop_int, cttz_int,
-            flipsign_int, lshr_int, mul_int, neg_int, not_int, or_int, shl_int, sle_int,
-            slt_int, sub_int, uinttype, ule_int, ult_int, xor_int
+using Base: add_int, and_int, ashr_int, bswap_int, checked_sdiv_int, checked_srem_int,
+            checked_udiv_int, checked_urem_int, ctlz_int, ctpop_int, cttz_int, flipsign_int,
+            lshr_int, mul_int, neg_int, not_int, or_int, shl_int, sle_int, slt_int, sub_int,
+            uinttype, ule_int, ult_int, xor_int
 
 using Base.GMP: ispos, Limb
 
@@ -280,5 +281,18 @@ flipsign(x::UBS, y::UBS) = flipsign_int(promote(x, y)...) % typeof(x)
 (+)(x::T, y::T) where {T<:XBI} = add_int(x, y)
 (*)(x::T, y::T) where {T<:XBI} = mul_int(x, y)
 
+div(x::XBS, y::Unsigned) = flipsign(signed(div(unsigned(abs(x)), y)), x)
+div(x::Unsigned, y::XBS) = unsigned(flipsign(signed(div(x, unsigned(abs(y)))), y))
+
+rem(x::XBS, y::Unsigned) = flipsign(signed(rem(unsigned(abs(x)), y)), x)
+rem(x::Unsigned, y::XBS) = rem(x, unsigned(abs(y)))
+
+mod(x::XBS, y::Unsigned) = rem(y + unsigned(rem(x, y)), y)
+
+# these operations fail LLVM for bigger types than UInt128
+div(x::T, y::T) where {T<:XBS} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_sdiv_int(x, y)
+rem(x::T, y::T) where {T<:XBS} = sizeof(T) > 16 ? T(rem(big(x), big(y))) : checked_srem_int(x, y)
+div(x::T, y::T) where {T<:XBU} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_udiv_int(x, y)
+rem(x::T, y::T) where {T<:XBU} = sizeof(T) > 16 ? T(rem(big(x), big(y))) : checked_urem_int(x, y)
 
 end # module

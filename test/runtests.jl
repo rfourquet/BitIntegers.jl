@@ -200,9 +200,17 @@ end
 @testset "arithmetic operations" begin
     for (X, Y) in TypeCombos
         T = promote_type(X, Y)
-        for op = (-, +, *)
-            @test op(X(3), Y(2)) isa T
-            @test op(X(3), Y(2)) == op(3, 2)
+        for op = (-, +, *, div, rem, mod)
+            TT = op ∈ (-, +, *) ? T :
+                 op === mod ?
+                   (Y <: Signed   && T <: Unsigned ? typeof(signed(T(0))) :
+                    Y <: Unsigned && T <: Signed ?   typeof(unsigned(T(0))) :
+                    T) :
+                 X <: Signed   && T <: Unsigned ? typeof(signed(T(0))) :
+                 X <: Unsigned && T <: Signed ?   typeof(unsigned(T(0))) :
+                 T
+            @test op(X(5), Y(2)) isa TT
+            @test op(X(5), Y(2)) == op(5, 2)
         end
     end
 end
