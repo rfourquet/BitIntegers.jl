@@ -242,3 +242,18 @@ end
         @test Base.ndigits0z(x, base) == Base.ndigits0z(nn, base)
     end
 end
+
+
+@testset "floats" begin
+    r = -big(2)^2000:big(2)^2000
+    n = rand(r)  # TODO: rand(X)
+    for X in XInts
+        x = n % X
+        nn = big(x)
+        for F in (Float16, Float32, Float64)
+            @test F(x) == F(nn)
+            @test promote_type(X, F) == F
+        end
+        @test AbstractFloat(x) == Float64(x)
+    end
+end

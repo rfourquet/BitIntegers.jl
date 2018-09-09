@@ -2,14 +2,14 @@
 
 module BitIntegers
 
-import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, bswap, count_ones, div, flipsign,
-             leading_zeros, mod, ndigits0zpb, promote_rule, rem, trailing_zeros, typemax,
-             typemin, unsigned, xor
+import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, bswap, count_ones, div,
+             flipsign, leading_zeros, mod, ndigits0zpb, promote_rule, rem, trailing_zeros,
+             typemax, typemin, unsigned, xor
 
 using Base: add_int, and_int, ashr_int, bswap_int, checked_sdiv_int, checked_srem_int,
             checked_udiv_int, checked_urem_int, ctlz_int, ctpop_int, cttz_int, flipsign_int,
             lshr_int, mul_int, ndigits0z, ndigits0znb, neg_int, not_int, or_int, shl_int,
-            sle_int, slt_int, sub_int, uinttype, ule_int, ult_int, xor_int
+            sitofp, sle_int, slt_int, sub_int, uinttype, uitofp, ule_int, ult_int, xor_int
 
 using Base.GMP: ispos, Limb
 
@@ -102,7 +102,11 @@ typemax(::Type{T}) where {T<:XBS} = bitcast(T, typemax(uinttype(T)) >> 1)
 
 # * conversions, promotions
 
+# ** unsigned
+
 unsigned(x::XBS) = reinterpret(typeof(convert(Unsigned, zero(x))), x)
+
+# ** integers
 
 # U -> X
 (::Type{T})(x::Union{UBI,Bool}) where {T<:XBI} = convertto(T, x)::T
@@ -176,6 +180,20 @@ end
     end
 end
 
+@generated function promote_rule(::Type{X}, ::Type{Y}) where {X<:XBI,Y<:UBI}
+    if X.size > Y.size
+        X
+    elseif X.size == Y.size
+        X <: Unsigned ?
+            X :
+            Y
+    else
+        Y
+    end
+end
+
+# ** BigInt
+
 function rem(x::BigInt, ::Type{T}) where T<:XBI
     if sizeof(T) <= sizeof(Limb)
         iszero(x) ? zero(T) : flipsign(unsafe_load(x.d) % T, x.size)
@@ -210,17 +228,19 @@ function (::Type{T})(x::BigInt) where T<:XBS
     end
 end
 
-@generated function promote_rule(::Type{X}, ::Type{Y}) where {X<:XBI,Y<:UBI}
-    if X.size > Y.size
-        X
-    elseif X.size == Y.size
-        X <: Unsigned ?
-            X :
-            Y
-    else
-        Y
+# ** floats
+
+AbstractFloat(x::XBI) = Float64(x)
+
+for T in (Float32, Float64)
+    @eval begin
+        (::Type{$T})(x::XBS) = sizeof(x) > 16 ? $T(big(x)) : sitofp($T, x)
+        (::Type{$T})(x::XBU) = sizeof(x) > 16 ? $T(big(x)) : uitofp($T, x)
+        promote_rule(::Type{$T}, ::Type{<:XBI}) = $T
     end
 end
+
+promote_rule(::Type{Float16}, ::Type{<:XBI}) = Float16
 
 
 # * comparisons
