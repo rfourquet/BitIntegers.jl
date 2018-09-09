@@ -1,4 +1,5 @@
 using BitIntegers, Test
+using Statistics: mean
 
 
 module TestBitIntegers
@@ -263,5 +264,19 @@ end
             end
         end
         @test AbstractFloat(x) == Float64(x)
+    end
+end
+
+
+@testset "rand" begin
+    for X in XInts
+        ispow2(sizeof(X)) || continue # cf. Issue #29053
+        A = rand(X, 2000)
+        for a = [A, bswap.(A)]
+            for f in (leading_zeros, leading_ones, trailing_zeros, trailing_ones)
+                @test 0.9 < mean(f.(a)) < 1.1
+            end
+            @test 8*sizeof(X)÷2 - 1 < mean(count_ones.(a)) < 8*sizeof(X)÷2 + 1
+        end
     end
 end

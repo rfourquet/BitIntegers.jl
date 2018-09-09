@@ -16,6 +16,8 @@ using Base.GMP: ispos, Limb
 using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
 
+import Random: rand
+using Random: AbstractRNG, SamplerType
 
 # * types definition & aliases
 
@@ -350,6 +352,27 @@ end
 
 ndigits0zpb(x::XBS, b::Integer) = ndigits0zpb(unsigned(abs(x)), Int(b))
 ndigits0zpb(x::XBU, b::Integer) = ndigits0zpb(x, Int(b))
+
+
+# * rand
+
+function rand(rng::AbstractRNG, ::SamplerType{T}) where T<:XBI
+    n = sizeof(T)
+    if n <= 16 # 128 bits
+        n > 8 ? rand(rng, UInt128) % T :
+        n > 4 ? rand(rng, UInt64)  % T :
+        n > 2 ? rand(rng, UInt32)  % T :
+        n > 1 ? rand(rng, UInt16)  % T :
+                rand(rng, UInt8)   % T
+    else
+        u = rand(rng, UInt128) % T
+        while n > 16
+            u = (u << 128) | rand(rng, UInt128)
+            n -= 16
+        end
+        u
+    end
+end
 
 
 end # module
