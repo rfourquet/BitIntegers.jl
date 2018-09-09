@@ -242,6 +242,11 @@ end
 
 promote_rule(::Type{Float16}, ::Type{<:XBI}) = Float16
 
+# TODO: avoid conversion to BigInt
+(::Type{T})(x::AbstractFloat) where {T<:XBI} = T(BigInt(x))::T
+# to disambiguate:
+(::Type{T})(x::Float16) where {T<:XBI} = T(BigInt(x))::T
+
 
 # * comparisons
 
