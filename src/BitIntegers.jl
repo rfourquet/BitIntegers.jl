@@ -10,7 +10,7 @@ using Base: add_int, and_int, ashr_int, bswap_int, ctlz_int, ctpop_int, cttz_int
             flipsign_int, lshr_int, mul_int, neg_int, not_int, or_int, shl_int, sle_int,
             slt_int, sub_int, uinttype, ule_int, ult_int, xor_int
 
-using Base.GMP: Limb
+using Base.GMP: ispos, Limb
 
 using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
@@ -184,6 +184,28 @@ function rem(x::BigInt, ::Type{T}) where T<:XBI
             u += (unsafe_load(x.d, l) % T) << ((sizeof(Limb)<<3)*(l-1))
         end
         flipsign(u, x.size)
+    end
+end
+
+function (::Type{T})(x::BigInt) where T<:XBU
+    if sizeof(T) < sizeof(Limb)
+        convert(T, convert(Limb,x))
+    else
+        0 <= x.size <= cld(sizeof(T),sizeof(Limb)) || throw(InexactError(Symbol(string(T)), T, x))
+        x % T
+    end
+end
+
+function (::Type{T})(x::BigInt) where T<:XBS
+    n = abs(x.size)
+    if sizeof(T) < sizeof(Limb)
+        SLimb = typeof(Signed(one(Limb)))
+        convert(T, convert(SLimb, x))
+    else
+        0 <= n <= cld(sizeof(T),sizeof(Limb)) || throw(InexactError(Symbol(string(T)), T, x))
+        y = x % T
+        ispos(x) ⊻ (y > 0) && throw(InexactError(Symbol(string(T)), T, x)) # catch overflow
+        y
     end
 end
 

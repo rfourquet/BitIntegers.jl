@@ -216,6 +216,9 @@ end
         @test x isa X
         if typemin(X) <= b <= typemax(X)
             @test x == b
+            @test x == X(b)
+        else
+            @test_throws InexactError X(b)
         end
     end
 end
