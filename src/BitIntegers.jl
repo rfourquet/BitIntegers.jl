@@ -2,12 +2,13 @@
 
 module BitIntegers
 
-import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, bswap, count_ones, leading_zeros,
-             promote_rule, rem, trailing_zeros, typemax, typemin, unsigned, xor
+import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, bswap, count_ones, flipsign,
+             leading_zeros, promote_rule, rem, trailing_zeros, typemax, typemin, unsigned,
+             xor
 
-using Base: add_int, and_int, ashr_int, bswap_int, ctlz_int, ctpop_int, cttz_int, lshr_int,
-            mul_int, neg_int, not_int, or_int, shl_int, sle_int, slt_int, sub_int, uinttype,
-            ule_int, ult_int, xor_int
+using Base: add_int, and_int, ashr_int, bswap_int, ctlz_int, ctpop_int, cttz_int,
+            flipsign_int, lshr_int, mul_int, neg_int, not_int, or_int, shl_int, sle_int,
+            slt_int, sub_int, uinttype, ule_int, ult_int, xor_int
 
 using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
@@ -229,6 +230,11 @@ function bswap(x::XBI)
         bswap_int(x)
     end
 end
+
+flipsign(x::T, y::T) where {T<:XBS} = flipsign_int(x, y)
+
+# this doesn't catch flipsign(x::BBS, y::BBS), which is more specific in Base
+flipsign(x::UBS, y::UBS) = flipsign_int(promote(x, y)...) % typeof(x)
 
 
 # * arithmetic operations

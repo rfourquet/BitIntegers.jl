@@ -190,6 +190,8 @@ end
                 @test z isa T
                 @test signed(z) == op(n, m)
             end
+            @test flipsign(x, y) isa X
+            @test signed(flipsign(x, y)) == flipsign(n, m)
         end
     end
 end
