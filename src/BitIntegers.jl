@@ -16,8 +16,8 @@ using Base.GMP: ispos, Limb
 using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
 
-import Random: rand
-using Random: AbstractRNG, SamplerType
+import Random: rand, Sampler
+using Random: AbstractRNG, Repetition, SamplerType, LessThan, Masked
 
 # * types definition & aliases
 
@@ -356,8 +356,17 @@ ndigits0zpb(x::XBU, b::Integer) = ndigits0zpb(x, Int(b))
 
 # * rand
 
-function rand(rng::AbstractRNG, ::SamplerType{T}) where T<:XBI
-    n = sizeof(T)
+# ** scalar
+
+rand(rng::AbstractRNG, ::SamplerType{T}) where {T<:XBI} = rand(rng, NBits{T}(sizeof(T) << 3))
+
+# sampler produce a T with at least n random bits (from low to high bits)
+struct NBits{T<:XBI} <: Sampler{T}
+    n::Int
+end
+
+function rand(rng::AbstractRNG, sp::NBits{T}) where {T<:XBI}
+    n = (sp.n + 7) >> 3 # bytes
     if n <= 16 # 128 bits
         n > 8 ? rand(rng, UInt128) % T :
         n > 4 ? rand(rng, UInt64)  % T :
@@ -373,6 +382,36 @@ function rand(rng::AbstractRNG, ::SamplerType{T}) where T<:XBI
         u
     end
 end
+
+
+# ** ranges
+
+# we use SamplerRangeFast as divisions are not yet efficient (for SamplerRangeInt)
+
+Sampler(::Type{<:AbstractRNG}, r::AbstractUnitRange{T}, ::Repetition) where {T<:XBI} =
+    SamplerRangeFast(r)
+
+# have to redefine SamplerRangeFast, as it's defined only for Base types in Random
+struct SamplerRangeFast{U<:XBU,T<:XBI} <: Sampler{T}
+    a::T      # first element of the range
+    bw::UInt  # bit width
+    m::U      # range length - 1
+    mask::U   # mask generated values before threshold rejection
+end
+
+SamplerRangeFast(r::AbstractUnitRange{T}) where T<:BitInteger =
+    SamplerRangeFast(r, uinttype(T))
+
+function SamplerRangeFast(r::AbstractUnitRange{T}, ::Type{U}) where {T,U}
+    isempty(r) && throw(ArgumentError("range must be non-empty"))
+    m = (last(r) - first(r)) % uinttype(T) % U # % uinttype(T) to not propagate sign bit
+    bw = (sizeof(U) << 3 - leading_zeros(m)) % UInt # bit-width
+    mask = ((1 % U) << bw) - (1 % U)
+    SamplerRangeFast{U,T}(first(r), bw, m, mask)
+end
+
+rand(rng::AbstractRNG, sp::SamplerRangeFast{<:XBI,T}) where {T} =
+    rand(rng, LessThan(sp.m, Masked(sp.mask, NBits{T}(sp.bw)))) % T + sp.a
 
 
 end # module

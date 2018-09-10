@@ -270,6 +270,13 @@ end
 
 @testset "rand" begin
     for X in XInts
+        # ranges
+        a, k, b = X.(sort!(big.([x >> (sizeof(X)*4) for x in rand(X, 3)]))) # TODO: remove conversions
+        k >>= rand(0:ndigits(k, base=2)-1)
+        r = k < 0 ? (b:k:a) : (a:k:b)
+        @test rand(r) ∈ r
+
+        # scalars
         ispow2(sizeof(X)) || continue # cf. Issue #29053
         A = rand(X, 2000)
         for a = [A, bswap.(A)]
