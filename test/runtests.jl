@@ -72,6 +72,21 @@ end
 end
 
 
+@testset "widen" begin
+    M = TestBitIntegers
+    @test widen(M.MyInt8)   == Int16
+    @test widen(M.MyUInt8)  == UInt16
+    @test widen(M.Int24)    == BigInt
+    @test widen(M.UInt24)   == BigInt
+    @test widen(Int256)   == Int512
+    @test widen(UInt256)  == UInt512
+    @test widen(Int512)   == Int1024
+    @test widen(UInt512)  == UInt1024
+    @test widen(Int1024)  == BigInt
+    @test widen(UInt1024) == BigInt
+end
+
+
 @testset "conversions" begin
     @testset "between types" begin
         for (X, Y) in TypeCombos

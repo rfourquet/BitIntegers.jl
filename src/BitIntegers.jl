@@ -36,6 +36,12 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
             "@define_integers requires exactly 1 or 3 arguments, got 2"))
     end
 
+    WSI = Symbol(:Int, 2n) # Wide
+    WUI = Symbol(:UInt, 2n)
+
+    WSI = isdefined(__module__, WSI) ? WSI : BigInt
+    WUI = isdefined(__module__, WUI) ? WUI : BigInt
+
     quote
         primitive type $SI <: AbstractBitSigned   $n end
         primitive type $UI <: AbstractBitUnsigned $n end
@@ -44,6 +50,9 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
         Base.Unsigned(x::$(esc(SI))) = $(esc(UI))(x)
         Base.uinttype(::Type{$(esc(SI))}) = $(esc(UI))
         Base.uinttype(::Type{$(esc(UI))}) = $(esc(UI))
+
+        Base.widen(::Type{$(esc(SI))}) = $(esc(WSI))
+        Base.widen(::Type{$(esc(UI))}) = $(esc(WUI))
     end
 end
 
@@ -52,7 +61,8 @@ end
 
 const _DEFINED_SIZES = (256, 512, 1024)
 
-for n = _DEFINED_SIZES
+# reverse so that widen knows about bigger types first:
+for n = reverse(_DEFINED_SIZES)
     @eval begin
         @define_integers $n
         export $(Symbol(:UInt, n))
