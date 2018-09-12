@@ -2,14 +2,15 @@
 
 module BitIntegers
 
-import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, bswap, count_ones, div,
-             flipsign, leading_zeros, mod, ndigits0zpb, promote_rule, rem, trailing_zeros,
-             typemax, typemin, unsigned, xor
+import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, bswap, checked_abs,
+             count_ones, div, flipsign, leading_zeros, mod, ndigits0zpb, promote_rule, rem,
+             sub_with_overflow, trailing_zeros, typemax, typemin, unsigned, xor
 
 using Base: add_int, and_int, ashr_int, bswap_int, checked_sdiv_int, checked_srem_int,
-            checked_udiv_int, checked_urem_int, ctlz_int, ctpop_int, cttz_int, flipsign_int,
-            lshr_int, mul_int, ndigits0z, ndigits0znb, neg_int, not_int, or_int, shl_int,
-            sitofp, sle_int, slt_int, sub_int, uinttype, uitofp, ule_int, ult_int, xor_int
+            checked_ssub_int, checked_udiv_int, checked_urem_int, checked_usub_int, ctlz_int,
+            ctpop_int, cttz_int, flipsign_int, lshr_int, mul_int, ndigits0z, ndigits0znb,
+            neg_int, not_int, or_int, shl_int, sitofp, sle_int, slt_int, sub_int, uinttype,
+            uitofp, ule_int, ult_int, xor_int
 
 using Base.GMP: ispos, Limb
 
@@ -331,6 +332,19 @@ div(x::T, y::T) where {T<:XBS} = sizeof(T) > 16 ? T(div(big(x), big(y))) : check
 rem(x::T, y::T) where {T<:XBS} = sizeof(T) > 16 ? T(rem(big(x), big(y))) : checked_srem_int(x, y)
 div(x::T, y::T) where {T<:XBU} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_udiv_int(x, y)
 rem(x::T, y::T) where {T<:XBU} = sizeof(T) > 16 ? T(rem(big(x), big(y))) : checked_urem_int(x, y)
+
+# ** checked operations
+
+sub_with_overflow(x::T, y::T) where {T<:XBS} = checked_ssub_int(x, y)
+sub_with_overflow(x::T, y::T) where {T<:XBU} = checked_usub_int(x, y)
+
+function checked_abs(x::XBS)
+    r = ifelse(x<0, -x, x)
+    r<0 && throw(OverflowError(string("checked arithmetic: cannot compute |x| for x = ", x, "::", typeof(x))))
+    r
+end
+
+checked_abs(x::XBU) = x
 
 
 # * misc

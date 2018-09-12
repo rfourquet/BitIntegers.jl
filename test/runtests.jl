@@ -302,3 +302,18 @@ end
         end
     end
 end
+
+@testset "checked operations" begin
+    for X in XInts
+        @test Base.sub_with_overflow(typemin(X)+X(3), X(3)) == (typemin(X), false)
+        @test Base.sub_with_overflow(typemin(X)+X(2), X(3)) == (typemax(X), true)
+        @test Base.checked_abs(typemax(X)) == typemax(X)
+        if X <: Signed
+            @test_throws OverflowError Base.checked_abs(typemin(X))
+        else
+            @test Base.checked_abs(typemin(X)) == zero(X)
+            x = rand(X)
+            @test Base.checked_abs(x) == x
+        end
+    end
+end
