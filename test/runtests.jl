@@ -305,6 +305,13 @@ end
     for X in XInts
         @test Base.sub_with_overflow(typemin(X)+X(3), X(3)) == (typemin(X), false)
         @test Base.sub_with_overflow(typemin(X)+X(2), X(3)) == (typemax(X), true)
+        @test Base.add_with_overflow(typemax(X)-X(3), X(3)) == (typemax(X), false)
+        @test Base.add_with_overflow(typemax(X)-X(2), X(3)) == (typemin(X), true)
+        if X <: Signed # unimplemented otherwise (problem with LLVM)
+            @test Base.mul_with_overflow(typemax(X), X(1))  == (typemax(X), false)
+            @test Base.mul_with_overflow(typemax(X), X(2))  == (-2 % X,     true)
+        end
+
         @test Base.checked_abs(typemax(X)) == typemax(X)
         if X <: Signed
             @test_throws OverflowError Base.checked_abs(typemin(X))
