@@ -294,7 +294,7 @@ end
 
         # scalars
         ispow2(sizeof(X)) || continue # cf. Issue #29053
-        A = rand(X, 2000)
+        A = rand(X, 3000)
         for a = [A, bswap.(A)]
             for f in (leading_zeros, leading_ones, trailing_zeros, trailing_ones)
                 @test 0.9 < mean(f.(a)) < 1.1
