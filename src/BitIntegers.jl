@@ -175,7 +175,7 @@ end
     end
 end
 
-@generated function rem(x::Union{UBI,Bool}, ::Type{to}) where {to<:UBI}
+@generated function _rem(x::Union{UBI,Bool}, ::Type{to}) where {to<:UBI}
     from = x
     to === from && return :x # this replaces Base's method for BBI
     if to.size < from.size
@@ -192,6 +192,11 @@ end
         :(bitcast(to, x))
     end
 end
+
+rem(x::Union{UBI,Bool}, ::Type{to}) where {to<:XBI} = _rem(x, to)
+rem(x::XBI, ::Type{to}) where {to<:UBI} = _rem(x, to)
+# to disambiguate
+rem(x::XBI, ::Type{to}) where {to<:XBI} = _rem(x, to)
 
 @generated function promote_rule(::Type{X}, ::Type{Y}) where {X<:XBI,Y<:UBI}
     if X.size > Y.size
