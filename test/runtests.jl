@@ -249,13 +249,14 @@ end
 
 
 @testset "ndigits0z" begin
-    r = -big(2)^2000:big(2)^2000
-    n = rand(r)  # TODO: rand(X)
-    base = rand(-100:200)
+    base = rand([-100:-2; 2:200])
     for X in XInts
-        x = n % X
-        nn = big(x)
-        @test Base.ndigits0z(x, base) == Base.ndigits0z(nn, base)
+        x = rand(X)
+        if X <: Unsigned && base < 0
+            x >>= 1 # ndigits0znb not implemented in this case
+        end
+        n = big(x)
+        @test Base.ndigits0z(x, base) == Base.ndigits0z(n, base)
     end
 end
 
