@@ -46,8 +46,9 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
     WUI = isdefined(__module__, WUI) ? WUI : BigInt
 
     quote
-        primitive type $SI <: AbstractBitSigned   $n end
-        primitive type $UI <: AbstractBitUnsigned $n end
+        # `esc` is necessary only on versions < 1.1
+        primitive type $(esc(SI)) <: AbstractBitSigned   $n end
+        primitive type $(esc(UI)) <: AbstractBitUnsigned $n end
 
         Base.Signed(x::$(esc(UI)))   = $(esc(SI))(x)
         Base.Unsigned(x::$(esc(SI))) = $(esc(UI))(x)
