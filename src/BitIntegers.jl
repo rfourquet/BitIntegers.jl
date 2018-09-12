@@ -66,10 +66,21 @@ const _DEFINED_SIZES = (256, 512, 1024)
 
 # reverse so that widen knows about bigger types first:
 for n = reverse(_DEFINED_SIZES)
+    SI = Symbol(:Int, n)
+    UI = Symbol(:UInt, n)
+    sistr = Symbol(:int, n, :_str)
+    uistr = Symbol(:uint, n, :_str)
     @eval begin
         @define_integers $n
-        export $(Symbol(:UInt, n))
-        export $(Symbol(:Int,  n))
+
+        macro $sistr(s)
+            return parse($SI, s)
+        end
+        macro $uistr(s)
+            return parse($UI, s)
+        end
+
+        export $SI, $UI, $(Symbol("@", sistr)), $(Symbol("@", uistr))
     end
 end
 

@@ -58,6 +58,16 @@ const TypeCombos =
 end
 
 
+@testset "string macros" begin
+    @test   int256"1" ===   Int256(1)
+    @test  uint256"1" ===  UInt256(1)
+    @test   int512"1" ===   Int512(1)
+    @test  uint512"1" ===  UInt512(1)
+    @test  int1024"1" ===  Int1024(1)
+    @test uint1024"1" === UInt1024(1)
+end
+
+
 @testset "typemin, typemax" begin
     for X in XInts
         @test typemin(X) < typemax(X)
