@@ -262,22 +262,19 @@ end
 
 
 @testset "floats" begin
-    r = -big(2)^2000:big(2)^2000
-    n = rand(r)  # TODO: rand(X)
-    f0 = Float64(n)
     for X in XInts
-        x = n % X
-        nn = big(x)
+        x = rand(X)
+        n = big(x)
         for F in (Float16, Float32, Float64)
-            f = F(nn)
+            f = F(n)
             @test F(x) == f
             @test promote_type(X, F) == F
             if !isinf(f)
                 @test F(X(f)) == f
             end
-            if n < typemin(X) || n > typemax(X)
-                @test_throws InexactError X(f0)
-            end
+            # the argument to X() is ±Inf in many cases:
+            @test_throws InexactError X(prevfloat(F(typemin(X))))
+            @test_throws InexactError X(nextfloat(F(typemax(X))))
         end
         @test AbstractFloat(x) == Float64(x)
     end
