@@ -45,6 +45,9 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
     WSI = isdefined(__module__, WSI) ? WSI : BigInt
     WUI = isdefined(__module__, WUI) ? WUI : BigInt
 
+    sistr = Symbol(lowercase(string(SI)), :_str)
+    uistr = Symbol(lowercase(string(UI)), :_str)
+
     quote
         # `esc` is necessary only on versions < 1.1
         primitive type $(esc(SI)) <: AbstractBitSigned   $n end
@@ -57,6 +60,13 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
 
         Base.widen(::Type{$(esc(SI))}) = $(esc(WSI))
         Base.widen(::Type{$(esc(UI))}) = $(esc(WUI))
+
+        macro $(esc(sistr))(s)
+            return parse($(esc(SI)), s)
+        end
+        macro $(esc(uistr))(s)
+            return parse($(esc(UI)), s)
+        end
     end
 end
 
@@ -67,21 +77,11 @@ const _DEFINED_SIZES = (256, 512, 1024)
 
 # reverse so that widen knows about bigger types first:
 for n = reverse(_DEFINED_SIZES)
-    SI = Symbol(:Int, n)
-    UI = Symbol(:UInt, n)
-    sistr = Symbol(:int, n, :_str)
-    uistr = Symbol(:uint, n, :_str)
     @eval begin
         @define_integers $n
-
-        macro $sistr(s)
-            return parse($SI, s)
-        end
-        macro $uistr(s)
-            return parse($UI, s)
-        end
-
-        export $SI, $UI, $(Symbol("@", sistr)), $(Symbol("@", uistr))
+        # next two lines can't be on one line (TODO: report issue)
+        export $(Symbol(:Int, n)),  $(Symbol("@", :int, n, :_str))
+        export $(Symbol(:UInt, n)), $(Symbol("@", :uint, n, :_str))
     end
 end
 

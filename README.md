@@ -18,10 +18,10 @@ julia> BitIntegers.@define_integers 8 MyInt8 MyUInt8
 
 julia> MyUInt8(1)
 0x01
-```
 
-(Currently, string macros for newly instantiated integer types are not created, but it's easy
-to define).
+julia> myint8"123" # the string macro is named like the type, in lower case
+123
+```
 
 Enough functions have been implemented to make those numbers a bit useful, but many more are missing.
 Issues and PRs are welcome :)
