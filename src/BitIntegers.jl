@@ -5,7 +5,7 @@ module BitIntegers
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
              bswap, checked_abs, count_ones, div, flipsign, leading_zeros, mod,
              mul_with_overflow, ndigits0zpb, promote_rule, rem, sub_with_overflow,
-             trailing_zeros, typemax, typemin, unsigned, xor
+             trailing_zeros, typemax, typemin, signed, unsigned, xor
 
 using Base: add_int, and_int, ashr_int, bswap_int, checked_sadd_int, checked_sdiv_int,
             checked_smul_int, checked_srem_int, checked_ssub_int, checked_uadd_int,
@@ -129,9 +129,13 @@ typemax(::Type{T}) where {T<:XBS} = bitcast(T, typemax(uinttype(T)) >> 1)
 
 # * conversions, promotions
 
+# ** signed
+signed(::Type{T}) where T<:XBI = typeof(convert(Signed, zero(T)))
+
 # ** unsigned
 
-unsigned(x::XBS) = reinterpret(typeof(convert(Unsigned, zero(x))), x)
+unsigned(::Type{T}) where T<:XBI = typeof(convert(Unsigned, zero(T)))
+unsigned(x::T) where T<:XBI = reinterpret(unsigned(T), x)
 
 # ** integers
 

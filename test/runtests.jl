@@ -122,6 +122,8 @@ end
             @test xu isa XU
             @test xu === Unsigned(x) === unsigned(x)
             @test xs === Signed(x) === signed(x)
+            @test typeof(xu) === unsigned(typeof(xs)) === unsigned(typeof(xu))
+            @test typeof(xs) === signed(typeof(xu)) === signed(typeof(xs))
             if X <: Signed
                 @test sizeof(X) == sizeof(XU)
                 @test X !== XU
