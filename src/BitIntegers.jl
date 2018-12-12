@@ -3,7 +3,7 @@
 module BitIntegers
 
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
-             bswap, checked_abs, count_ones, div, flipsign, leading_zeros, mod,
+             bswap, checked_abs, count_ones, div, flipsign, isodd, leading_zeros, mod,
              mul_with_overflow, ndigits0zpb, promote_rule, rem, sub_with_overflow,
              trailing_zeros, typemax, typemin, unsigned, xor
 
@@ -329,6 +329,10 @@ flipsign(x::T, y::T) where {T<:XBS} = flipsign_int(x, y)
 
 # this doesn't catch flipsign(x::BBS, y::BBS), which is more specific in Base
 flipsign(x::UBS, y::UBS) = flipsign_int(promote(x, y)...) % typeof(x)
+
+
+# Cheaper isodd, to avoid BigInt.  NOTE: Base.iseven is defined in terms of isodd.
+isodd(a::BitInteger) = isodd(a % Int)  # only depends on the final bit! :)
 
 
 # * arithmetic operations

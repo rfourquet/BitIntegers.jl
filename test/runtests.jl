@@ -176,6 +176,8 @@ end
         @test y >= x
         @test x == Y(i)
         @test y == X(j)
+        @test isodd(x) == isodd(i) == !iseven(x)
+        @test isodd(y) == isodd(j) == !iseven(y)
     end
 end
 
