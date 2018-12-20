@@ -330,9 +330,8 @@ flipsign(x::T, y::T) where {T<:XBS} = flipsign_int(x, y)
 # this doesn't catch flipsign(x::BBS, y::BBS), which is more specific in Base
 flipsign(x::UBS, y::UBS) = flipsign_int(promote(x, y)...) % typeof(x)
 
-
 # Cheaper isodd, to avoid BigInt.  NOTE: Base.iseven is defined in terms of isodd.
-isodd(a::BitInteger) = isodd(a % Int)  # only depends on the final bit! :)
+isodd(a::XBI) = isodd(a % Int)  # only depends on the final bit! :)
 
 
 # * arithmetic operations
