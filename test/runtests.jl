@@ -220,6 +220,13 @@ end
             @test signed(flipsign(x, y)) == flipsign(n, m)
         end
     end
+    for (X, Y) in TypeCombos
+        x,y = X(i),Y(j)
+        @test isodd(x) == isodd(i) == !iseven(x)
+        @test isodd(y) == isodd(j) == !iseven(y)
+        # Test performance of isodd(x): doesn't allocate.
+        @test @allocated(isodd(x) && isodd(y)) == 0
+    end
 end
 
 
