@@ -1,7 +1,10 @@
 authors = ["Rafael Fourquet <fourquet.rafael@gmail.com>"]
 name = "BitIntegers"
-uuid = "484ca59e-adf8-11e8-3fc9-31149c4372f8"
+uuid = "c3b6d118-76ef-56ca-8cc7-ebb389d030a1"
 version = "0.1.0"
+
+[compat]
+julia = "1"
 
 [deps]
 Random     = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
