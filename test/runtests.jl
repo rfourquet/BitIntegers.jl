@@ -277,6 +277,16 @@ end
     end
 end
 
+@testset "bitstring" begin
+    @test bitstring(UInt256(3)) == bitstring(Int256(3)) == '0'^254 * "11"
+    @test bitstring(UInt512(3) << 256) == bitstring(Int512(3) << 256) == '0'^254 * "11" * '0'^256
+    let (x, y) = rand(UInt128, 2)
+        u = UInt1024(x) << 512 + UInt1024(y)
+        v = u + UInt1024(1) << 1023
+        @test bitstring(u) == bitstring(Int1024(u)) == '0'^384 * bitstring(x) * '0'^384 * bitstring(y)
+        @test bitstring(v) == bitstring(typemin(Int1024) + Int1024(u)) == '1' * '0'^383 * bitstring(x) * '0'^384 * bitstring(y)
+    end
+end
 
 @testset "floats" begin
     for X in XInts
