@@ -3,8 +3,8 @@
 module BitIntegers
 
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
-             bswap, checked_abs, count_ones, div, flipsign, isodd, leading_zeros, mod,
-             mul_with_overflow, ndigits0zpb, promote_rule, rem, sub_with_overflow,
+             bitstring, bswap, checked_abs, count_ones, div, flipsign, isodd, leading_zeros,
+             mod, mul_with_overflow, ndigits0zpb, promote_rule, rem, sub_with_overflow,
              trailing_zeros, typemax, typemin, unsigned, xor
 
 using Base: add_int, and_int, ashr_int, bswap_int, checked_sadd_int, checked_sdiv_int,
@@ -421,6 +421,7 @@ end
 ndigits0zpb(x::XBS, b::Integer) = ndigits0zpb(unsigned(abs(x)), Int(b))
 ndigits0zpb(x::XBU, b::Integer) = ndigits0zpb(x, Int(b))
 
+bitstring(x::XBI) = string(reinterpret(uinttype(typeof(x)), x), pad = 8*sizeof(x), base = 2)
 
 # * rand
 
