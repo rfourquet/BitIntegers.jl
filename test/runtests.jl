@@ -217,7 +217,9 @@ end
                 @test signed(z) == op(n, m)
             end
             @test flipsign(x, y) isa X
-            @test signed(flipsign(x, y)) == flipsign(n, m)
+            if !(n == -128 && X == Int8 && m < 0)
+                @test signed(flipsign(x, y)) == flipsign(n, m)
+            end
         end
     end
     for (X, Y) in TypeCombos
