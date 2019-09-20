@@ -16,11 +16,18 @@ using Base: add_int, and_int, ashr_int, bswap_int, checked_sadd_int, checked_sdi
 
 using Base.GMP: ispos, Limb
 
-using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
+using Core: bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
 
 import Random: rand, Sampler
 using Random: AbstractRNG, Repetition, SamplerType, LessThan, Masked
+
+if VERSION >= v"1.4.0-DEV.114"
+    check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(T, x)
+else
+    check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(x)
+end
+
 
 # * types definition & aliases
 
@@ -149,9 +156,9 @@ end
     if T <: Unsigned
         if x <: Signed
             if sizeof(x) < sizeof(T)
-                :(sext_int(T, check_top_bit(x)))
+                :(sext_int(T, check_top_bit(T, x)))
             elseif sizeof(x) == sizeof(T)
-                :(bitcast(T, check_top_bit(x)))
+                :(bitcast(T, check_top_bit(T, x)))
             else
                 :(checked_trunc_uint(T, x))
             end
@@ -181,9 +188,9 @@ end
             if sizeof(x) < sizeof(T)
                 :(zext_int(T, x))
             elseif sizeof(x) == sizeof(T)
-                :(bitcast(T, check_top_bit(x)))
+                :(bitcast(T, check_top_bit(T, x)))
             else
-                :(checked_trunc_sint(T, check_top_bit(x)))
+                :(checked_trunc_sint(T, check_top_bit(T, x)))
             end
         end
     end
