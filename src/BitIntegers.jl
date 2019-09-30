@@ -348,8 +348,8 @@ isodd(a::XBI) = isodd(a % Int)  # only depends on the final bit! :)
 (+)(x::T, y::T) where {T<:XBI} = add_int(x, y)
 (*)(x::T, y::T) where {T<:XBI} = mul_int(x, y)
 
-div(x::XBS, y::Unsigned) = flipsign(signed(div(unsigned(abs(x)), y)), x)
-div(x::Unsigned, y::XBS) = unsigned(flipsign(signed(div(x, unsigned(abs(y)))), y))
+div(x::XBS, y::Unsigned, ::typeof(RoundToZero)) = flipsign(signed(div(unsigned(abs(x)), y)), x)
+div(x::Unsigned, y::XBS, ::typeof(RoundToZero)) = unsigned(flipsign(signed(div(x, unsigned(abs(y)))), y))
 
 rem(x::XBS, y::Unsigned) = flipsign(signed(rem(unsigned(abs(x)), y)), x)
 rem(x::Unsigned, y::XBS) = rem(x, unsigned(abs(y)))
@@ -357,10 +357,18 @@ rem(x::Unsigned, y::XBS) = rem(x, unsigned(abs(y)))
 mod(x::XBS, y::Unsigned) = rem(y + unsigned(rem(x, y)), y)
 
 # these operations fail LLVM for bigger types than UInt128
-div(x::T, y::T) where {T<:XBS} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_sdiv_int(x, y)
+div(x::T, y::T, ::typeof(RoundToZero)) where {T<:XBS} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_sdiv_int(x, y)
 rem(x::T, y::T) where {T<:XBS} = sizeof(T) > 16 ? T(rem(big(x), big(y))) : checked_srem_int(x, y)
-div(x::T, y::T) where {T<:XBU} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_udiv_int(x, y)
+div(x::T, y::T, ::typeof(RoundToZero)) where {T<:XBU} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_udiv_int(x, y)
 rem(x::T, y::T) where {T<:XBU} = sizeof(T) > 16 ? T(rem(big(x), big(y))) : checked_urem_int(x, y)
+
+# Compatibility fallbacks for the above definitions
+if VERSION < v"1.4.0-DEV.208"
+    div(x::XBS, y::Unsigned) = div(x, y, RoundToZero)
+    div(x::Unsigned, y::XBS) = div(x, y, RoundToZero)
+    div(x::T, y::T) where {T<:XBS} = div(x, y, RoundToZero)
+    div(x::T, y::T) where {T<:XBU} = div(x, y, RoundToZero)
+end
 
 # ** checked operations
 
