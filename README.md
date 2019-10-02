@@ -47,4 +47,4 @@ functions from `Base`, so the REPL experience becomes very annoyingly slow until
 recompiled (fixed by https://github.com/JuliaLang/julia/pull/30830);
 
 3) prior to Julia version 1.4: creating arrays of types of size not a power of two easily leads
-to errors and segfaults (cf. e.g. #1, fixed by https://github.com/JuliaLang/julia/pull/33283).
+to errors and segfaults (cf. e.g. https://github.com/rfourquet/BitIntegers.jl/issues/1, fixed by https://github.com/JuliaLang/julia/pull/33283).
