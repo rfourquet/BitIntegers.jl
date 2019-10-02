@@ -42,6 +42,9 @@ What is quite surprising is that the intrinsics seem to work when not wrapped in
 So if speed is paramount and you don't need checked operations, you can use `Base.sdiv_int` instead
 of `div` for example;
 
-2) for some reason, importing this code invalidates many precompiled functions from `Base`, so the
-REPL experience becomes very annoyingly slow until functions get recompiled.
-Hopefully this will be a solvable problem.
+2) prior to Julia version 1.2: for some reason, importing this code invalidates many precompiled
+functions from `Base`, so the REPL experience becomes very annoyingly slow until functions get
+recompiled (fixed by https://github.com/JuliaLang/julia/pull/30830);
+
+3) prior to Julia version 1.4: creating arrays of types of size not a power of two easily leads
+to errors and segfaults (cf. e.g. #1, fixed by https://github.com/JuliaLang/julia/pull/33283).
