@@ -4,8 +4,8 @@ module BitIntegers
 
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
              bitstring, bswap, checked_abs, count_ones, div, flipsign, isodd, leading_zeros,
-             mod, mul_with_overflow, ndigits0zpb, promote_rule, rem, sub_with_overflow,
-             trailing_zeros, typemax, typemin, unsigned, xor
+             mod, mul_with_overflow, ndigits0zpb, promote_rule, rem, signed,
+             sub_with_overflow, trailing_zeros, typemax, typemin, unsigned, xor
 
 using Base: add_int, and_int, ashr_int, bswap_int, checked_sadd_int, checked_sdiv_int,
             checked_smul_int, checked_srem_int, checked_ssub_int, checked_uadd_int,
@@ -136,8 +136,9 @@ typemax(::Type{T}) where {T<:XBS} = bitcast(T, typemax(uinttype(T)) >> 1)
 
 # * conversions, promotions
 
-# ** unsigned
+# ** signed / unsigned
 
+signed(x::XBU) = reinterpret(typeof(convert(Signed, zero(x))), x)
 unsigned(x::XBS) = reinterpret(typeof(convert(Unsigned, zero(x))), x)
 
 # ** integers
