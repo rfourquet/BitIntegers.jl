@@ -1,7 +1,7 @@
 authors = ["Rafael Fourquet <fourquet.rafael@gmail.com>"]
 name = "BitIntegers"
 uuid = "c3b6d118-76ef-56ca-8cc7-ebb389d030a1"
-version = "0.2.1"
+version = "0.2.2"
 
 [compat]
 julia = "1"
