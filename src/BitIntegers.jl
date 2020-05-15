@@ -4,15 +4,15 @@ module BitIntegers
 
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
              bitstring, bswap, checked_abs, count_ones, div, flipsign, isodd, leading_zeros,
-             mod, mul_with_overflow, ndigits0zpb, promote_rule, rem, signed,
-             sub_with_overflow, trailing_zeros, typemax, typemin, unsigned, xor
+             mod, mul_with_overflow, ndigits0zpb, peek, promote_rule, read, rem, signed,
+             sub_with_overflow, trailing_zeros, typemax, typemin, unsigned, write, xor
 
-using Base: add_int, and_int, ashr_int, bswap_int, checked_sadd_int, checked_sdiv_int,
-            checked_smul_int, checked_srem_int, checked_ssub_int, checked_uadd_int,
-            checked_udiv_int, checked_umul_int, checked_urem_int, checked_usub_int, ctlz_int,
-            ctpop_int, cttz_int, flipsign_int, lshr_int, mul_int, ndigits0z, ndigits0znb,
-            neg_int, not_int, or_int, shl_int, sitofp, sle_int, slt_int, sub_int, uinttype,
-            uitofp, ule_int, ult_int, xor_int
+using Base: GenericIOBuffer, add_int, and_int, ashr_int, bswap_int, checked_sadd_int,
+            checked_sdiv_int, checked_smul_int, checked_srem_int, checked_ssub_int,
+            checked_uadd_int, checked_udiv_int, checked_umul_int, checked_urem_int,
+            checked_usub_int, ctlz_int, ctpop_int, cttz_int, flipsign_int, lshr_int, mul_int,
+            ndigits0z, ndigits0znb, neg_int, not_int, or_int, shl_int, sitofp, sle_int,
+            slt_int, sub_int, uinttype, uitofp, ule_int, ult_int, xor_int
 
 using Base.GMP: ispos, Limb
 
@@ -438,6 +438,35 @@ ndigits0zpb(x::XBS, b::Integer) = ndigits0zpb(unsigned(abs(x)), Int(b))
 ndigits0zpb(x::XBU, b::Integer) = ndigits0zpb(x, Int(b))
 
 bitstring(x::XBI) = string(reinterpret(uinttype(typeof(x)), x), pad = 8*sizeof(x), base = 2)
+
+
+# * read/write
+
+# write & read are used by serialize/deserialize
+
+write(s::IO, x::XBI) = write(s, Ref(x))
+
+# TODO: bad type signature, should not accept Union of XBIs
+function read(from::GenericIOBuffer, ::Type{T}) where {T<:XBI}
+    x = peek(from, T)
+    from.ptr += sizeof(T)
+    return x
+end
+
+function peek(from::GenericIOBuffer, ::Type{T}) where {T<:XBI}
+    from.readable || Base._throw_not_readable()
+    avail = bytesavailable(from)
+    nb = sizeof(T)
+    if nb > avail
+        throw(EOFError())
+    end
+    GC.@preserve from begin
+        ptr::Ptr{T} = pointer(from.data, from.ptr)
+        x = unsafe_load(ptr)
+    end
+    return x
+end
+
 
 # * rand
 
