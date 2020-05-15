@@ -1,5 +1,6 @@
 using BitIntegers, Test
 using Statistics: mean
+using Serialization: serialize, deserialize
 
 
 module TestBitIntegers
@@ -309,6 +310,32 @@ end
     end
 end
 
+@testset "read/write" begin
+    for X in XInts
+        io = IOBuffer()
+        x, y = rand(X, 2)
+        @test write(io, x) == sizeof(x)
+        @test write(io, y) == sizeof(y)
+        seekstart(io)
+        @test read(io, X) == x
+        @test read(io, X) == y
+        @test_throws EOFError read(io, X)
+        seekstart(io)
+        serialize(io, x)
+        serialize(io, 3)
+        serialize(io, y)
+        serialize(io, true)
+        seekstart(io)
+        q = deserialize(io)
+        @test q === x
+        q = deserialize(io)
+        @test q === 3
+        q = deserialize(io)
+        @test q === y
+        q = deserialize(io)
+        @test q === true
+    end
+end
 
 @testset "rand" begin
     for X in XInts
