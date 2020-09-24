@@ -272,8 +272,7 @@ end
 end
 
 @testset "read/write" begin
-    for X in XInts
-        io = IOBuffer()
+    function read_write_tests(io, X)
         x, y = rand(X, 2)
         @test write(io, x) == sizeof(x)
         @test write(io, y) == sizeof(y)
@@ -295,6 +294,20 @@ end
         @test q === y
         q = deserialize(io)
         @test q === true
+    end
+
+    @testset "IOBuffer" begin
+        for X in XInts
+            read_write_tests(IOBuffer(), X)
+        end
+    end
+
+    @testset "IOStream" begin
+        for X in XInts
+            open(tempname(), "w+") do iostream
+                read_write_tests(iostream, X)
+            end
+        end
     end
 end
 

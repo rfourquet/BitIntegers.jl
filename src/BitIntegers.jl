@@ -453,6 +453,10 @@ function read(from::GenericIOBuffer, ::Type{T}) where {T<:XBI}
     return x
 end
 
+function read(io::IO, ::Type{T}) where {T<:XBI}
+    return read!(io, Ref{T}(0))[]::T
+end
+
 function peek(from::GenericIOBuffer, ::Type{T}) where {T<:XBI}
     from.readable || Base._throw_not_readable()
     avail = bytesavailable(from)
