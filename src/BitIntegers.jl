@@ -311,14 +311,64 @@ promote_rule(::Type{Float16}, ::Type{<:XBI}) = Float16
 (|)(x::T, y::T) where {T<:XBI} = or_int(x, y)
 xor(x::T, y::T) where {T<:XBI} = xor_int(x, y)
 
->>( x::UBS, y::UBU) = ashr_int(x, y)
->>( x::UBU, y::UBU) = lshr_int(x, y)
->>>(x::UBI, y::UBU) = lshr_int(x, y)
-<<( x::UBI, y::UBU) = shl_int(x, y)
+# LLVM bit shifting (lshr_int, ashr_int and shl_int) has performance issues for large integers
+# The following two functions make shifts with constant values
+# That makes shifting 5 to 7 times faster for 1024-bit integers
 
->>( x::UBI, y::Int) = ifelse(0 <= y, x >> unsigned(y),  x << unsigned(-y))
-<<( x::UBI, y::Int) = ifelse(0 <= y, x << unsigned(y),  x >> unsigned(-y))
->>>(x::UBI, y::Int) = ifelse(0 <= y, x >>> unsigned(y), x << unsigned(-y))
+const SHIFT_SPLIT_NBITS = 64
+
+@inline @generated function shift_small(sh_fun::Function, x::XBI, y)
+    # @assert 0 <= y < SHIFT_NBITS
+    # essentially `y == bit && return intrinsic(x, bit)` for each bit in 1:SHIFT_NBITS-1
+    quote
+        y == 0 && return x
+        $([:(y == $bits && return sh_fun(x, $bits)) for bits in 1:SHIFT_SPLIT_NBITS-2]...)
+        sh_fun(x, $(SHIFT_SPLIT_NBITS - 1))
+    end
+end
+
+@inline @generated function shift_by_steps(sh_fun::Function, x::I, y::UBU) where {I<:XBI}
+    nbits = 8 * sizeof(I)
+    # Performance issue does not afect integers with less than 256 bits
+    nbits < 256 && return :(sh_fun(x, y))
+    split = SHIFT_SPLIT_NBITS
+    pows = (ndigits(nbits - 1, base=2)-1):-1:(ndigits(split, base=2)-1)
+    quote
+        y >= $nbits && return (sh_fun == ashr_int && x < 0) ? -oneunit($I) : zero($I)
+        y < $SHIFT_SPLIT_NBITS && return shift_small(sh_fun, x, y)
+        $([:(if y >= $val 
+                y -= $val
+                x = sh_fun(x, $val)
+            end) for val in 2 .^ pows]...
+        )
+        shift_small(sh_fun, x, y)
+    end
+end
+
+function >>( x::XBS, y::UBU)
+    shift_by_steps(ashr_int, x, y)
+end
+
+function >>( x::XBU, y::UBU)
+    shift_by_steps(lshr_int, x, y)
+end
+
+function >>>(x::XBI, y::UBU)
+    shift_by_steps(lshr_int, x, y)
+end
+
+function <<( x::XBI, y::UBU)
+    shift_by_steps(shl_int, x, y)
+end
+
+>>( x::BBS, y::XBU) = ashr_int(x, y)
+>>( x::BBU, y::XBU) = lshr_int(x, y)
+>>>(x::BBI, y::XBU) = lshr_int(x, y)
+<<( x::BBI, y::XBU) = shl_int(x, y)
+
+>>( x::UBI, y::Int) = 0 <= y ? x >> unsigned(y) :  x << unsigned(-y)
+<<( x::UBI, y::Int) = 0 <= y ? x << unsigned(y) :  x >> unsigned(-y)
+>>>(x::UBI, y::Int) = 0 <= y ? x >>> unsigned(y) : x << unsigned(-y)
 
 count_ones(    x::XBI) = Int(ctpop_int(x))
 leading_zeros( x::XBI) = Int(ctlz_int(x))
