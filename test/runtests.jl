@@ -195,8 +195,10 @@ end
 
 
 @testset "shift operations" begin
-    vals = [rand(Int8, 8)..., rand(Int64, 8)..., rand(Int1024, 8)...]
-    shifts = [rand(-8:8, 8)..., rand(-64:64, 8)..., rand(-1024:1024, 8)...]
+    vals = [rand(Int8, 10)..., rand(Int64, 10)..., rand(Int1024, 10)...]
+    sh_cts = unique(i + j for i in [0, 32, 64, 128, 200, 256, 1024] for j in -20:20)
+    sh_rnd = Integer[rand(1:1024, 20)..., rand(Int256(1):Int256(1024), 20)...]
+    shifts = Integer[sh_cts..., -sh_cts..., sh_rnd..., -sh_rnd...]
     for X in XInts
         for val in vals
             mask = big(1) << (8 * sizeof(X)) - 1
