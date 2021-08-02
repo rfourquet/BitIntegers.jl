@@ -319,7 +319,7 @@ const SHIFT_SPLIT_NBITS = 64
 
 @inline @generated function shift_call(sh_fun::Function, x::I, y::UBU) where {I<:XBI}
     nbits = 8 * sizeof(I)
-    # Performance issue does not afect integers with less than 256 bits
+    # performance issue does not affect integers with no more than 128 bits
     nbits <= 128 && return :(sh_fun(x, y))
     split = SHIFT_SPLIT_NBITS
     mask = split - 1
