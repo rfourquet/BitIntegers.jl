@@ -1,6 +1,6 @@
 # BitIntegers
 
-[![Build Status](https://travis-ci.org/rfourquet/BitIntegers.jl.svg?branch=master)](https://travis-ci.org/rfourquet/BitIntegers.jl)
+[![Tests Status](https://github.com/rfourquet/BitIntegers.jl/workflows/CI/badge.svg)](https://github.com/rfourquet/BitIntegers.jl/actions?query=workflow%3ACI)
 
 
 This package implements fixed-width integer types similar to standard builtin-ones like `Int` or `UInt128`.
