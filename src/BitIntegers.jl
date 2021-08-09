@@ -311,14 +311,40 @@ promote_rule(::Type{Float16}, ::Type{<:XBI}) = Float16
 (|)(x::T, y::T) where {T<:XBI} = or_int(x, y)
 xor(x::T, y::T) where {T<:XBI} = xor_int(x, y)
 
->>( x::UBS, y::UBU) = ashr_int(x, y)
->>( x::UBU, y::UBU) = lshr_int(x, y)
->>>(x::UBI, y::UBU) = lshr_int(x, y)
-<<( x::UBI, y::UBU) = shl_int(x, y)
+# LLVM bit shifting (lshr_int, ashr_int and shl_int) has performance issues for large integers
+# The following functions allows much faster code (10x speedup for 1024 bit integers)
 
->>( x::UBI, y::Int) = ifelse(0 <= y, x >> unsigned(y),  x << unsigned(-y))
-<<( x::UBI, y::Int) = ifelse(0 <= y, x << unsigned(y),  x >> unsigned(-y))
->>>(x::UBI, y::Int) = ifelse(0 <= y, x >>> unsigned(y), x << unsigned(-y))
+# Note: this should be a power of 2
+const SHIFT_SPLIT_NBITS = 64
+
+@inline @generated function shift_call(sh_fun::Function, x::I, y::UBU) where {I<:XBI}
+    nbits = 8 * sizeof(I)
+    # performance issue does not affect integers with no more than 128 bits
+    nbits <= 128 && return :(sh_fun(x, y))
+    split = SHIFT_SPLIT_NBITS
+    mask = split - 1
+    quote
+        hi = y >> $(trailing_zeros(split))
+        $([:(hi == $val && return sh_fun(sh_fun(x, $(val * split)), y & $mask))
+            for val in 0:div(nbits, split)]...
+        )
+        (sh_fun == ashr_int && x < 0) ? -oneunit($I) : zero($I)
+    end
+end
+
+>>( x::XBS, y::UBU) = shift_call(ashr_int, x, y)
+>>( x::XBU, y::UBU) = shift_call(lshr_int, x, y)
+>>>(x::XBI, y::UBU) = shift_call(lshr_int, x, y)
+<<( x::XBI, y::UBU) = shift_call(shl_int, x, y)
+
+>>( x::BBS, y::XBU) = ashr_int(x, y)
+>>( x::BBU, y::XBU) = lshr_int(x, y)
+>>>(x::BBI, y::XBU) = lshr_int(x, y)
+<<( x::BBI, y::XBU) = shl_int(x, y)
+
+@inline >>( x::UBI, y::Int) = 0 <= y ? x >> unsigned(y) :  x << unsigned(-y)
+@inline <<( x::UBI, y::Int) = 0 <= y ? x << unsigned(y) :  x >> unsigned(-y)
+@inline >>>(x::UBI, y::Int) = 0 <= y ? x >>> unsigned(y) : x << unsigned(-y)
 
 count_ones(    x::XBI) = Int(ctpop_int(x))
 leading_zeros( x::XBI) = Int(ctlz_int(x))
