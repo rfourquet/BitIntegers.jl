@@ -3,7 +3,7 @@ on:
   pull_request:
   push:
       branches:
-        - 'master'
+        - 'dev' # push on dev, if CI green then fast-forward master into dev
       tags: '*'
 
 jobs:
@@ -50,4 +50,3 @@ jobs:
           git config --global user.email te@st.er
 
       - uses: julia-actions/julia-runtest@latest
-        continue-on-error: ${{ matrix.version == 'nightly' }}
