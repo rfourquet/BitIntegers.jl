@@ -351,7 +351,7 @@ leading_zeros( x::XBI) = Int(ctlz_int(x))
 trailing_zeros(x::XBI) = Int(cttz_int(x))
 
 function bswap(x::XBI)
-    if sizeof(x) % 2 != 0
+    if VERSION < v"1.6" && sizeof(x) % 2 != 0
         # llvm instruction is invalid
         error("unimplemented")
     else

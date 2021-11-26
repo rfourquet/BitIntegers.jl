@@ -147,7 +147,7 @@ end
     k, l = rand(Int(typemin(Int8)):-1, 2)
     for X in XInts
         for op in (~, bswap)
-            if sizeof(X) % 2 != 0 && op == bswap
+            if VERSION < v"1.6" && sizeof(X) % 2 != 0 && op == bswap
                 @test_throws ErrorException op(X(i))
                 continue
             end
