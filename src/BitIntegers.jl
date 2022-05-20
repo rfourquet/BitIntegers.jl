@@ -319,8 +319,8 @@ const SHIFT_SPLIT_NBITS = 64
 
 @inline @generated function shift_call(sh_fun::Function, x::I, y::UBU) where {I<:XBI}
     nbits = 8 * sizeof(I)
-    # performance issue does not affect integers with no more than 128 bits
-    nbits <= 128 && return :(sh_fun(x, y))
+    # check that no Integer < 128 bit in size went into this function
+    @assert nbits > 128
     split = SHIFT_SPLIT_NBITS
     mask = split - 1
     quote
@@ -332,10 +332,11 @@ const SHIFT_SPLIT_NBITS = 64
     end
 end
 
->>( x::XBS, y::UBU) = shift_call(ashr_int, x, y)
->>( x::XBU, y::UBU) = shift_call(lshr_int, x, y)
->>>(x::XBI, y::UBU) = shift_call(lshr_int, x, y)
-<<( x::XBI, y::UBU) = shift_call(shl_int, x, y)
+# performance issue does not affect integers with no more than 128 bits
+>>( x::XBS, y::UBU) = 8sizeof(typeof(x)) > 128 ? shift_call(ashr_int, x, y) : ashr_int(x, y)
+>>( x::XBU, y::UBU) = 8sizeof(typeof(x)) > 128 ? shift_call(lshr_int, x, y) : lshr_int(x, y)
+>>>(x::XBI, y::UBU) = 8sizeof(typeof(x)) > 128 ? shift_call(lshr_int, x, y) : lshr_int(x, y)
+<<( x::XBI, y::UBU) = 8sizeof(typeof(x)) > 128 ? shift_call(shl_int, x, y) : shl_int(x, y)
 
 >>( x::BBS, y::XBU) = ashr_int(x, y)
 >>( x::BBU, y::XBU) = lshr_int(x, y)
