@@ -200,11 +200,11 @@ end
 @generated function _rem(x::Union{UBI,Bool}, ::Type{to}) where {to<:UBI}
     from = x
     to === from && return :x # this replaces Base's method for BBI
-    if to.size < from.size
+    if sizeof(to) < sizeof(from)
         :(trunc_int(to, x))
     elseif from === Bool
         :(convert(to, x))
-    elseif from.size < to.size
+    elseif sizeof(from) < sizeof(to)
         if from <: Signed
             :(sext_int(to, x))
         else
@@ -221,9 +221,9 @@ rem(x::XBI, ::Type{to}) where {to<:UBI} = _rem(x, to)
 rem(x::XBI, ::Type{to}) where {to<:XBI} = _rem(x, to)
 
 @generated function promote_rule(::Type{X}, ::Type{Y}) where {X<:XBI,Y<:UBI}
-    if X.size > Y.size
+    if sizeof(X) > sizeof(Y)
         X
-    elseif X.size == Y.size
+    elseif sizeof(X) == sizeof(Y)
         X <: Unsigned ?
             X :
             Y
