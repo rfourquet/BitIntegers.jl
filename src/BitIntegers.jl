@@ -543,7 +543,7 @@ struct SamplerRangeFast{U<:XBU,T<:XBI} <: Sampler{T}
     mask::U   # mask generated values before threshold rejection
 end
 
-SamplerRangeFast(r::AbstractUnitRange{T}) where T<:BitInteger =
+SamplerRangeFast(r::AbstractUnitRange{T}) where T<:XBI =
     SamplerRangeFast(r, uinttype(T))
 
 function SamplerRangeFast(r::AbstractUnitRange{T}, ::Type{U}) where {T,U}
