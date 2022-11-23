@@ -104,9 +104,9 @@ end
 @testset "promote_rule" begin
     for (X, Y) in TypeCombos
         T = promote_type(X, Y)
-        if X.size > Y.size
+        if sizeof(X) > sizeof(Y)
             @test T === X
-        elseif X.size == Y.size
+        elseif sizeof(X) == sizeof(Y)
             @test T === (X <: Unsigned ? X : Y)
         else
             @test T == Y
