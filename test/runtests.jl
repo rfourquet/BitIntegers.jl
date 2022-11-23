@@ -338,6 +338,7 @@ end
         k >>= rand(0:ndigits(k, base=2)-1)
         r = k < 0 ? (b:k:a) : (a:k:b)
         @test rand(r) ∈ r
+        @test rand(a:b) ∈ a:b
 
         # scalars
         ispow2(sizeof(X)) || VERSION >= v"1.4" || continue # cf. Issue #29053
