@@ -123,6 +123,17 @@ end
         @test x % Y == x
         @test x % Y % X === x
     end
+    for X in XInts
+        x = X(i)
+        @test x % X === x
+        if X <: Signed
+            @test x % BitIntegers.AbstractBitSigned === x
+            @test x % Signed === x
+        else
+            @test x % BitIntegers.AbstractBitUnsigned === x
+            @test x % Unsigned === x
+        end
+    end
 end
 
 
