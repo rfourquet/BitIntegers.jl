@@ -6,7 +6,7 @@
 This package implements fixed-width integer types similar to standard builtin-ones like `Int` or `UInt128`.
 The following types, with obvious meaning, are exported: `Int256`, `UInt256`, `Int512`, `UInt512`, `Int1024`, `UInt1024`;
 they come with string macros to construct them (like for `Int128` and `UInt128`), e.g. `int256"123"`.
-It's possible to instantiate a new pair of types with the non-exported `@define_integers` macro:
+It's possible to instantiate a new pair of types with the exported `@define_integers` macro:
 
 ```julia
 julia> BitIntegers.@define_integers 24

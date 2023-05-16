@@ -22,6 +22,8 @@ using Core: bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
 import Random: rand, Sampler
 using Random: AbstractRNG, Repetition, SamplerType, LessThan, Masked
 
+export @define_integers
+
 if VERSION >= v"1.4.0-DEV.114"
     check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(T, x)
 else
