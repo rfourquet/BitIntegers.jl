@@ -226,9 +226,16 @@ rem(x::XBI, ::Type{to}) where {to<:XBI} = _rem(x, to)
     if sizeof(X) > sizeof(Y)
         X
     elseif sizeof(X) == sizeof(Y)
-        X <: Unsigned ?
-            X :
+        if X <: Unsigned && Y <: Signed
+            X
+        elseif X <: Signed && Y <: Unsigned
             Y
+        elseif Y <: XBI
+            Base.Bottom # user needs to define its own rule
+        else
+            # custom integers win
+            X
+        end
     else
         Y
     end

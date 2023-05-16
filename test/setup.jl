@@ -8,6 +8,7 @@ module TestBitIntegers
 using BitIntegers, Test
 
 BitIntegers.@define_integers 24
+BitIntegers.@define_integers 24 I24 U24 # to test mixed operations with Int24
 BitIntegers.@define_integers 200
 BitIntegers.@define_integers 8  MyInt8 MyUInt8
 
@@ -35,6 +36,8 @@ BitIntegers.@define_integers 8  MyInt8 MyUInt8
 end
 
 end # module TestBitIntegers
+
+using .TestBitIntegers: Int24, UInt24, I24, U24, MyInt8, MyUInt8
 
 const BInts = Base.BitInteger_types
 const XInts = (BitIntegers.BitInteger_types..., TestBitIntegers.UInt24, TestBitIntegers.Int24)
