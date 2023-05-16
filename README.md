@@ -23,28 +23,21 @@ julia> myint8"123" # the string macro is named like the type, in lower case
 123
 ```
 
-Enough functions have been implemented to make those numbers a bit useful, but many more are missing.
-Issues and PRs are welcome :)
-
-I expected to implement this using tuples, but it turned out that using `primitive type` was a huge
-win: many basic functions were already available for free via the use of intrinsics! (which tap
-into already implemented features in LLVM).
-The caveat is that I have no idea whether how it is used here is legal: for example, it seems possible
-to call `Primes.factor(rand(Int256))` without a problem, but `Primes.factor(rand(UInt256))` will
-make LLVM abort the program, in a way that I'm unable to debug so far.
+This is implemented using `primitive type` and julia intrinsics, the caveat being that it might
+not always be legal (e.g. in some julia versions, `Primes.factor(rand(UInt256))` used to
+make LLVM abort the program, while it was fine for `Int256`).
 
 There are another couple of outstanding issues:
 
-1) the intrinsics for division operations make LLVM fail (at least for widths greater than 128 bits),
-so they are here implemented via conversion to `BigInt` first, which makes them quite slow
-(but a patch to Julia is on the way to accelerate that).
-What is quite surprising is that the intrinsics seem to work when not wrapped in another function!
-So if speed is paramount and you don't need checked operations, you can use `Base.sdiv_int` instead
-of `div` for example;
+1) the intrinsics for division operations used to make LLVM fail for widths greater than 128 bits,
+so they are here implemented via conversion to `BigInt` first, which makes them quite slow;
+it got slightly better in recent julia (nightly pre-1.10), where it prints
+`JIT session error: Symbols not found: [ __divei4 ]` but at least doesn't abort.
 
 2) prior to Julia version 1.2: for some reason, importing this code invalidates many precompiled
 functions from `Base`, so the REPL experience becomes very annoyingly slow until functions get
 recompiled (fixed by https://github.com/JuliaLang/julia/pull/30830);
 
 3) prior to Julia version 1.4: creating arrays of types of size not a power of two easily leads
-to errors and segfaults (cf. e.g. https://github.com/rfourquet/BitIntegers.jl/issues/1, fixed by https://github.com/JuliaLang/julia/pull/33283).
+to errors and segfaults (cf. e.g. https://github.com/rfourquet/BitIntegers.jl/issues/1, fixed by
+https://github.com/JuliaLang/julia/pull/33283).
