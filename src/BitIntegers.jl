@@ -221,6 +221,8 @@ rem(x::Union{UBI,Bool}, ::Type{to}) where {to<:XBI} = _rem(x, to)
 rem(x::XBI, ::Type{to}) where {to<:UBI} = _rem(x, to)
 # to disambiguate
 rem(x::XBI, ::Type{to}) where {to<:XBI} = _rem(x, to)
+# to not let corresponding Base method (`T <: Integer`) take over (which errors)
+rem(x::T, ::Type{T}) where {T<:XBI} = x
 
 @generated function promote_rule(::Type{X}, ::Type{Y}) where {X<:XBI,Y<:UBI}
     if sizeof(X) > sizeof(Y)
