@@ -1,7 +1,7 @@
 name = "BitIntegers"
 uuid = "c3b6d118-76ef-56ca-8cc7-ebb389d030a1"
 authors = ["Rafael Fourquet <fourquet.rafael@gmail.com>"]
-version = "0.2.7"
+version = "0.3.0"
 
 [deps]
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"

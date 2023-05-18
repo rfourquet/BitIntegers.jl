@@ -50,3 +50,11 @@ recompiled (fixed by https://github.com/JuliaLang/julia/pull/30830);
 3) prior to Julia version 1.4: creating arrays of types of size not a power of two easily leads
 to errors and segfaults (cf. e.g. https://github.com/rfourquet/BitIntegers.jl/issues/1, fixed by
 https://github.com/JuliaLang/julia/pull/33283).
+
+## Release notes
+
+### v0.3.0
+
+* change and document how `promote_rule` is implemented ([#36](https://github.com/rfourquet/BitIntegers.jl/pull/36))
+* export `@define_integers`
+* fix performance bug in bitshift for widths <= 128 bits
