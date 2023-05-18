@@ -112,6 +112,28 @@ end
             @test T == Y
         end
     end
+    # promote_rule follows Base rules; for types with same size/signedness:
+    # - types from XBI win
+    # - do not resolve for two types from XBI
+    for X = (Int16, UInt16), Y = (MyInt8, MyUInt8)
+        # X bigger
+        @test promote_type(X, Y) == X == promote_type(Y, X)
+    end
+    for X = (Int16, UInt16, MyInt8, MyUInt8), Y = (Int24, UInt24)
+        # Y bigger
+        @test promote_type(X, Y) == Y == promote_type(Y, X)
+    end
+    # same size:
+    @test promote_type(Int8, MyInt8) == MyInt8
+    @test promote_type(Int8, MyUInt8) == MyUInt8
+    @test promote_type(UInt8, MyInt8) == UInt8
+    @test promote_type(UInt8, MyUInt8) == MyUInt8
+    @test promote_type(Int24, I24) == BitIntegers.AbstractBitSigned # typejoin
+    @test promote_type(Int24, U24) == U24
+    @test promote_type(UInt24, I24) == UInt24
+    @test promote_type(UInt24, U24) == BitIntegers.AbstractBitUnsigned
+    # fail for two BitIntegers types
+    @test_throws ErrorException U24(1) + UInt24(2) # can't resolve
 end
 
 

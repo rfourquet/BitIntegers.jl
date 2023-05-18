@@ -23,7 +23,16 @@ julia> myint8"123" # the string macro is named like the type, in lower case
 123
 ```
 
-This is implemented using `primitive type` and julia intrinsics, the caveat being that it might
+These custom integers work as similarly as possible to bit integers defined in `Base`.
+In particular type promotion (`promote_rule`), with the additional following rules:
+when two types have the same signedness (both `<: Signed` or both `<: Unsigned`) and bit widths:
+* when both types are defined with `@define_integers`, `promote_rule` returns `Union{}`, which means
+  `promote_type` will end up returning an abstract type (via `typejoin`); the user can
+  disambiguate by defining its own `promote_rule`;
+* when one type is defined with `@define_integers` and the other is defined in `Base`,
+  `promote_rule` returns the former.
+
+This package is implemented using `primitive type` and julia intrinsics, the caveat being that it might
 not always be legal (e.g. in some julia versions, `Primes.factor(rand(UInt256))` used to
 make LLVM abort the program, while it was fine for `Int256`).
 
