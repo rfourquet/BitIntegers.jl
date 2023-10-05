@@ -180,15 +180,25 @@ end
     k, l = rand(Int(typemin(Int8)):-1, 2)
     for X in XInts
         for op in (~, bswap)
-            if VERSION < v"1.6" && sizeof(X) % 2 != 0 && op == bswap
-                @test_throws ErrorException op(X(i))
-                continue
-            end
             x = op(X(i))
             @test x isa X
             @test x != X(i) # we assume sizeof(X) > 8
             @test op(x) == X(i)
         end
+        # bswap specific
+        if VERSION >= v"1.6"
+            for y = rand(X, 20)
+                x = bswap(y)
+                if iseven(sizeof(x))
+                    # test that default implemented matches bswap_simple
+                    @test x == BitIntegers.bswap_simple(y)
+                else
+                    # test that default implemented (i.e. bswap_simple) matches bswap_odd
+                    @test x == bswap_odd(y)
+                end
+            end
+        end
+
         for op in (count_ones, leading_zeros, trailing_zeros, leading_ones, trailing_ones)
             r = op(X(i))
             @test r isa Int
