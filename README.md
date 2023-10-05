@@ -51,7 +51,12 @@ recompiled (fixed by https://github.com/JuliaLang/julia/pull/30830);
 to errors and segfaults (cf. e.g. https://github.com/rfourquet/BitIntegers.jl/issues/1, fixed by
 https://github.com/JuliaLang/julia/pull/33283).
 
+
 ## Release notes
+
+### v0.3.1
+
+* fix incorrect `bswap` for odd byte-sizes ([#41](https://github.com/rfourquet/BitIntegers.jl/pull/41))
 
 ### v0.3.0
 

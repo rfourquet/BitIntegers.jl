@@ -363,12 +363,24 @@ leading_zeros( x::XBI) = Int(ctlz_int(x))
 trailing_zeros(x::XBI) = Int(cttz_int(x))
 
 function bswap(x::XBI)
-    if VERSION < v"1.6" && sizeof(x) % 2 != 0
+    if isodd(sizeof(x))
         # llvm instruction is invalid
-        error("unimplemented")
+        bswap_simple(x)
     else
         bswap_int(x)
     end
+end
+
+# llvm is clever enough to transform that into `bswap` of the input truncated to the correct
+# size (8 bits less), followed by a "funnel shift left" `fshl`
+function bswap_simple(x::XBI)
+    y = zero(x)
+    for _ = 1:sizeof(x)
+        y <<= 8
+        y |= x % UInt8
+        x >>>= 8
+    end
+    y
 end
 
 flipsign(x::T, y::T) where {T<:XBS} = flipsign_int(x, y)

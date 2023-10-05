@@ -48,4 +48,29 @@ const TypeCombos =
     [((X, Y) for X in Ints for Y in (X ∈ BInts ? XInts : Ints))...,
      (Int, Int), (Int, UInt), (UInt, Int), (UInt, UInt)]
 
+
+# initial attempt at implementing bswap for odd byte-sizes, but it's less efficient
+# than the `bswap_simple` version after being optimized by llvm!
+# let's keep this version around to test values
+if VERSION >= v"1.6"
+    @generated function bswap_odd(x::BitIntegers.XBI)
+        @assert isodd(sizeof(x))
+        nb = sizeof(x) * 8
+        ix = "i$nb"
+        iy = "i$(nb+8)"
+        quote
+            Base.llvmcall(($"""
+                           declare $iy @llvm.bswap.$iy($iy %Val)
+                           define $ix @entry($ix) {
+                               %y = zext $ix %0 to $iy
+                               %y2 = call $iy @llvm.bswap.$iy($iy %y)
+                               %y3 = lshr $iy %y2, 8
+                               %x2 = trunc $iy %y3 to $ix
+                               ret $ix %x2
+                           }
+                           """, "entry"), $x, Tuple{$x}, x)
+        end
+    end
+end
+
 nothing
