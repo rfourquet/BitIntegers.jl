@@ -3,6 +3,7 @@
 module BitIntegers
 
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
+             bitrotate,
              bitstring, bswap, checked_abs, count_ones, div, flipsign, isodd, leading_zeros,
              mod, mul_with_overflow, ndigits0zpb, peek, promote_rule, read, rem, signed,
              sub_with_overflow, trailing_zeros, typemax, typemin, unsigned, write, xor
@@ -357,6 +358,12 @@ end
 @inline >>( x::UBI, y::Int) = 0 <= y ? x >> unsigned(y) :  x << unsigned(-y)
 @inline <<( x::UBI, y::Int) = 0 <= y ? x << unsigned(y) :  x >> unsigned(-y)
 @inline >>>(x::UBI, y::Int) = 0 <= y ? x >>> unsigned(y) : x << unsigned(-y)
+
+function bitrotate(x::T, k::Integer) where {T<:XBI}
+    l = (sizeof(T) << 3) % UInt
+    k::UInt = mod(k, l)
+    (x << k) | (x >>> (l-k))
+end
 
 count_ones(    x::XBI) = Int(ctpop_int(x))
 leading_zeros( x::XBI) = Int(ctlz_int(x))
