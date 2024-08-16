@@ -1,42 +1,4 @@
-using BitIntegers, Test
-using Statistics: mean
-
-
-module TestBitIntegers
-
-using BitIntegers, Test
-
-BitIntegers.@define_integers 24
-BitIntegers.@define_integers 8  MyInt8 MyUInt8
-
-# the following should throw, but is hard to test:
-# BitIntegers.@define_integers 8 MyInt8
-
-@testset "definitions" begin
-    @test @isdefined Int24
-    @test @isdefined UInt24
-    @test sizeof(Int24) == sizeof(UInt24) == 3
-    @test Int24  <: Signed
-    @test UInt24 <: Unsigned
-
-    @test @isdefined MyInt8
-    @test @isdefined MyUInt8
-    @test sizeof(MyInt8) == sizeof(MyUInt8) == 1
-    @test MyInt8  <: Signed
-    @test MyUInt8 <: Unsigned
-end
-
-end # module TestBitIntegers
-
-const BInts = Base.BitInteger_types
-const XInts = (BitIntegers.BitInteger_types..., TestBitIntegers.UInt24, TestBitIntegers.Int24)
-const Ints = (BInts..., XInts...)
-
-# we don't include most Base-only type combinations:
-const TypeCombos =
-    [((X, Y) for X in Ints for Y in (X ∈ BInts ? XInts : Ints))...,
-     (Int, Int), (Int, UInt), (UInt, Int), (UInt, UInt)]
-
+include("setup.jl")
 
 @testset "types are defined" begin
     for (T, s) = (Int256 => 256, Int512 => 512, Int1024 => 1024)
@@ -144,14 +106,36 @@ end
 @testset "promote_rule" begin
     for (X, Y) in TypeCombos
         T = promote_type(X, Y)
-        if X.size > Y.size
+        if sizeof(X) > sizeof(Y)
             @test T === X
-        elseif X.size == Y.size
+        elseif sizeof(X) == sizeof(Y)
             @test T === (X <: Unsigned ? X : Y)
         else
             @test T == Y
         end
     end
+    # promote_rule follows Base rules; for types with same size/signedness:
+    # - types from XBI win
+    # - do not resolve for two types from XBI
+    for X = (Int16, UInt16), Y = (MyInt8, MyUInt8)
+        # X bigger
+        @test promote_type(X, Y) == X == promote_type(Y, X)
+    end
+    for X = (Int16, UInt16, MyInt8, MyUInt8), Y = (Int24, UInt24)
+        # Y bigger
+        @test promote_type(X, Y) == Y == promote_type(Y, X)
+    end
+    # same size:
+    @test promote_type(Int8, MyInt8) == MyInt8
+    @test promote_type(Int8, MyUInt8) == MyUInt8
+    @test promote_type(UInt8, MyInt8) == UInt8
+    @test promote_type(UInt8, MyUInt8) == MyUInt8
+    @test promote_type(Int24, I24) == BitIntegers.AbstractBitSigned # typejoin
+    @test promote_type(Int24, U24) == U24
+    @test promote_type(UInt24, I24) == UInt24
+    @test promote_type(UInt24, U24) == BitIntegers.AbstractBitUnsigned
+    # fail for two BitIntegers types
+    @test_throws ErrorException U24(1) + UInt24(2) # can't resolve
 end
 
 
@@ -162,6 +146,17 @@ end
         @test x % Y isa Y
         @test x % Y == x
         @test x % Y % X === x
+    end
+    for X in XInts
+        x = X(i)
+        @test x % X === x
+        if X <: Signed
+            @test x % BitIntegers.AbstractBitSigned === x
+            @test x % Signed === x
+        else
+            @test x % BitIntegers.AbstractBitUnsigned === x
+            @test x % Unsigned === x
+        end
     end
 end
 
@@ -187,15 +182,25 @@ end
     k, l = rand(Int(typemin(Int8)):-1, 2)
     for X in XInts
         for op in (~, bswap)
-            if sizeof(X) % 2 != 0 && op == bswap
-                @test_throws ErrorException op(X(i))
-                continue
-            end
             x = op(X(i))
             @test x isa X
             @test x != X(i) # we assume sizeof(X) > 8
             @test op(x) == X(i)
         end
+        # bswap specific
+        if VERSION >= v"1.6"
+            for y = rand(X, 20)
+                x = bswap(y)
+                if iseven(sizeof(x))
+                    # test that default implemented matches bswap_simple
+                    @test x == BitIntegers.bswap_simple(y)
+                else
+                    # test that default implemented (i.e. bswap_simple) matches bswap_odd
+                    @test x == bswap_odd(y)
+                end
+            end
+        end
+
         for op in (count_ones, leading_zeros, trailing_zeros, leading_ones, trailing_ones)
             r = op(X(i))
             @test r isa Int
@@ -219,7 +224,36 @@ end
                 @test signed(z) == op(n, m)
             end
             @test flipsign(x, y) isa X
-            @test signed(flipsign(x, y)) == flipsign(n, m)
+            if !(n == -128 && X == Int8 && m < 0)
+                @test signed(flipsign(x, y)) == flipsign(n, m)
+            end
+        end
+    end
+    for (X, Y) in TypeCombos
+        x,y = X(i),Y(j)
+        @test isodd(x) == isodd(i) == !iseven(x)
+        @test isodd(y) == isodd(j) == !iseven(y)
+        # Test performance of isodd(x): doesn't allocate.
+        @test @allocated(isodd(x) && isodd(y)) == 0
+    end
+end
+
+
+@testset "shift operations" begin
+    vals = [rand(Int8, 10)..., rand(Int64, 10)..., rand(Int1024, 10)...]
+    sh_cts = unique(i + j for i in [0, 32, 64, 128, 200, 256, 1024] for j in -20:20)
+    sh_rnd = Integer[rand(1:1024, 20)..., rand(Int256(1):Int256(1024), 20)...]
+    shifts = Integer[sh_cts..., -sh_cts..., sh_rnd..., -sh_rnd...]
+    for X in XInts
+        for val in vals
+            mask = big(1) << (8 * sizeof(X)) - 1
+            x = val % X
+            b = big(x)
+            for s in shifts
+                @test (x >> s) & mask == (b >> s) & mask
+                @test (x << s) & mask == (b << s) & mask
+                @test (x >>> s) & mask == ((b & mask) >>> s) & mask
+            end
         end
     end
 end
@@ -272,6 +306,16 @@ end
     end
 end
 
+@testset "bitstring" begin
+    @test bitstring(UInt256(3)) == bitstring(Int256(3)) == '0'^254 * "11"
+    @test bitstring(UInt512(3) << 256) == bitstring(Int512(3) << 256) == '0'^254 * "11" * '0'^256
+    let (x, y) = rand(UInt128, 2)
+        u = UInt1024(x) << 512 + UInt1024(y)
+        v = u + UInt1024(1) << 1023
+        @test bitstring(u) == bitstring(Int1024(u)) == '0'^384 * bitstring(x) * '0'^384 * bitstring(y)
+        @test bitstring(v) == bitstring(typemin(Int1024) + Int1024(u)) == '1' * '0'^383 * bitstring(x) * '0'^384 * bitstring(y)
+    end
+end
 
 @testset "floats" begin
     for X in XInts
@@ -292,6 +336,45 @@ end
     end
 end
 
+@testset "read/write" begin
+    function read_write_tests(io, X)
+        x, y = rand(X, 2)
+        @test write(io, x) == sizeof(x)
+        @test write(io, y) == sizeof(y)
+        seekstart(io)
+        @test read(io, X) == x
+        @test read(io, X) == y
+        @test_throws EOFError read(io, X)
+        seekstart(io)
+        serialize(io, x)
+        serialize(io, 3)
+        serialize(io, y)
+        serialize(io, true)
+        seekstart(io)
+        q = deserialize(io)
+        @test q === x
+        q = deserialize(io)
+        @test q === 3
+        q = deserialize(io)
+        @test q === y
+        q = deserialize(io)
+        @test q === true
+    end
+
+    @testset "IOBuffer" begin
+        for X in XInts
+            read_write_tests(IOBuffer(), X)
+        end
+    end
+
+    @testset "IOStream" begin
+        for X in XInts
+            open(tempname(), "w+") do iostream
+                read_write_tests(iostream, X)
+            end
+        end
+    end
+end
 
 @testset "rand" begin
     for X in XInts
@@ -300,11 +383,12 @@ end
         k >>= rand(0:ndigits(k, base=2)-1)
         r = k < 0 ? (b:k:a) : (a:k:b)
         @test rand(r) ∈ r
+        @test rand(a:b) ∈ a:b
 
         # scalars
-        ispow2(sizeof(X)) || continue # cf. Issue #29053
+        ispow2(sizeof(X)) || VERSION >= v"1.4" || continue # cf. Issue #29053
         A = rand(X, 3000)
-        for a = [A, bswap.(A)]
+        for a = (ispow2(sizeof(X)) ? [A, bswap.(A)] : [A])
             for f in (leading_zeros, leading_ones, trailing_zeros, trailing_ones)
                 @test 0.9 < mean(f.(a)) < 1.1
             end
@@ -315,13 +399,15 @@ end
 
 @testset "checked operations" begin
     for X in XInts
-        @test Base.sub_with_overflow(typemin(X)+X(3), X(3)) == (typemin(X), false)
-        @test Base.sub_with_overflow(typemin(X)+X(2), X(3)) == (typemax(X), true)
-        @test Base.add_with_overflow(typemax(X)-X(3), X(3)) == (typemax(X), false)
-        @test Base.add_with_overflow(typemax(X)-X(2), X(3)) == (typemin(X), true)
-        if X <: Signed # unimplemented otherwise (problem with LLVM)
-            @test Base.mul_with_overflow(typemax(X), X(1))  == (typemax(X), false)
-            @test Base.mul_with_overflow(typemax(X), X(2))  == (-2 % X,     true)
+        if sizeof(X) != 3 # bug with [U]Int24, cf. Julia issue #34288
+            @test Base.sub_with_overflow(typemin(X)+X(3), X(3)) == (typemin(X), false)
+            @test Base.sub_with_overflow(typemin(X)+X(2), X(3)) == (typemax(X), true)
+            @test Base.add_with_overflow(typemax(X)-X(3), X(3)) == (typemax(X), false)
+            @test Base.add_with_overflow(typemax(X)-X(2), X(3)) == (typemin(X), true)
+            if X <: Signed # unimplemented otherwise (problem with LLVM)
+                @test Base.mul_with_overflow(typemax(X), X(1))  == (typemax(X), false)
+                @test Base.mul_with_overflow(typemax(X), X(2))  == (-2 % X,     true)
+            end
         end
 
         @test Base.checked_abs(typemax(X)) == typemax(X)

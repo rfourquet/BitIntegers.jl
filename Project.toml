@@ -1,14 +1,18 @@
-authors = ["Rafael Fourquet <fourquet.rafael@gmail.com>"]
 name = "BitIntegers"
-uuid = "484ca59e-adf8-11e8-3fc9-31149c4372f8"
-version = "0.1.0"
+uuid = "c3b6d118-76ef-56ca-8cc7-ebb389d030a1"
+authors = ["Rafael Fourquet <fourquet.rafael@gmail.com>"]
+version = "0.3.1"
 
 [deps]
-Random     = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[compat]
+julia = "1"
 
 [extras]
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-Test       = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Statistics", "Test"]
+test = ["Statistics", "Test", "Serialization"]

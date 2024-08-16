@@ -3,24 +3,33 @@
 module BitIntegers
 
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
-             bswap, checked_abs, count_ones, div, flipsign, leading_zeros, mod,
-             mul_with_overflow, ndigits0zpb, promote_rule, rem, sub_with_overflow,
-             trailing_zeros, typemax, typemin, signed, unsigned, xor
+             bitstring, bswap, checked_abs, count_ones, div, flipsign, isodd, leading_zeros,
+             mod, mul_with_overflow, ndigits0zpb, peek, promote_rule, read, rem, signed,
+             sub_with_overflow, trailing_zeros, typemax, typemin, signed, unsigned, write, xor
 
-using Base: add_int, and_int, ashr_int, bswap_int, checked_sadd_int, checked_sdiv_int,
-            checked_smul_int, checked_srem_int, checked_ssub_int, checked_uadd_int,
-            checked_udiv_int, checked_umul_int, checked_urem_int, checked_usub_int, ctlz_int,
-            ctpop_int, cttz_int, flipsign_int, lshr_int, mul_int, ndigits0z, ndigits0znb,
-            neg_int, not_int, or_int, shl_int, sitofp, sle_int, slt_int, sub_int, uinttype,
-            uitofp, ule_int, ult_int, xor_int
+using Base: GenericIOBuffer, add_int, and_int, ashr_int, bswap_int, checked_sadd_int,
+            checked_sdiv_int, checked_smul_int, checked_srem_int, checked_ssub_int,
+            checked_uadd_int, checked_udiv_int, checked_umul_int, checked_urem_int,
+            checked_usub_int, ctlz_int, ctpop_int, cttz_int, flipsign_int, lshr_int, mul_int,
+            ndigits0z, ndigits0znb, neg_int, not_int, or_int, shl_int, sitofp, sle_int,
+            slt_int, sub_int, uinttype, uitofp, ule_int, ult_int, xor_int
 
 using Base.GMP: ispos, Limb
 
-using Core: bitcast, check_top_bit, checked_trunc_sint, checked_trunc_uint, sext_int,
+using Core: bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
 
 import Random: rand, Sampler
 using Random: AbstractRNG, Repetition, SamplerType, LessThan, Masked
+
+export @define_integers
+
+if VERSION >= v"1.4.0-DEV.114"
+    check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(T, x)
+else
+    check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(x)
+end
+
 
 # * types definition & aliases
 
@@ -131,9 +140,9 @@ typemax(::Type{T}) where {T<:XBS} = bitcast(T, typemax(uinttype(T)) >> 1)
 
 # ** signed
 signed(::Type{T}) where T<:XBI = typeof(convert(Signed, zero(T)))
+signed(x::T) where T<:XBI = reinterpret(signed(T), x)
 
 # ** unsigned
-
 unsigned(::Type{T}) where T<:XBI = typeof(convert(Unsigned, zero(T)))
 unsigned(x::T) where T<:XBI = reinterpret(unsigned(T), x)
 
@@ -153,9 +162,9 @@ end
     if T <: Unsigned
         if x <: Signed
             if sizeof(x) < sizeof(T)
-                :(sext_int(T, check_top_bit(x)))
+                :(sext_int(T, check_top_bit(T, x)))
             elseif sizeof(x) == sizeof(T)
-                :(bitcast(T, check_top_bit(x)))
+                :(bitcast(T, check_top_bit(T, x)))
             else
                 :(checked_trunc_uint(T, x))
             end
@@ -185,9 +194,9 @@ end
             if sizeof(x) < sizeof(T)
                 :(zext_int(T, x))
             elseif sizeof(x) == sizeof(T)
-                :(bitcast(T, check_top_bit(x)))
+                :(bitcast(T, check_top_bit(T, x)))
             else
-                :(checked_trunc_sint(T, check_top_bit(x)))
+                :(checked_trunc_sint(T, check_top_bit(T, x)))
             end
         end
     end
@@ -196,11 +205,11 @@ end
 @generated function _rem(x::Union{UBI,Bool}, ::Type{to}) where {to<:UBI}
     from = x
     to === from && return :x # this replaces Base's method for BBI
-    if to.size < from.size
+    if sizeof(to) < sizeof(from)
         :(trunc_int(to, x))
     elseif from === Bool
         :(convert(to, x))
-    elseif from.size < to.size
+    elseif sizeof(from) < sizeof(to)
         if from <: Signed
             :(sext_int(to, x))
         else
@@ -215,14 +224,23 @@ rem(x::Union{UBI,Bool}, ::Type{to}) where {to<:XBI} = _rem(x, to)
 rem(x::XBI, ::Type{to}) where {to<:UBI} = _rem(x, to)
 # to disambiguate
 rem(x::XBI, ::Type{to}) where {to<:XBI} = _rem(x, to)
+# to not let corresponding Base method (`T <: Integer`) take over (which errors)
+rem(x::T, ::Type{T}) where {T<:XBI} = x
 
 @generated function promote_rule(::Type{X}, ::Type{Y}) where {X<:XBI,Y<:UBI}
-    if X.size > Y.size
+    if sizeof(X) > sizeof(Y)
         X
-    elseif X.size == Y.size
-        X <: Unsigned ?
-            X :
+    elseif sizeof(X) == sizeof(Y)
+        if X <: Unsigned && Y <: Signed
+            X
+        elseif X <: Signed && Y <: Unsigned
             Y
+        elseif Y <: XBI
+            Base.Bottom # user needs to define its own rule
+        else
+            # custom integers win
+            X
+        end
     else
         Y
     end
@@ -307,32 +325,74 @@ promote_rule(::Type{Float16}, ::Type{<:XBI}) = Float16
 (|)(x::T, y::T) where {T<:XBI} = or_int(x, y)
 xor(x::T, y::T) where {T<:XBI} = xor_int(x, y)
 
->>( x::UBS, y::UBU) = ashr_int(x, y)
->>( x::UBU, y::UBU) = lshr_int(x, y)
->>>(x::UBI, y::UBU) = lshr_int(x, y)
-<<( x::UBI, y::UBU) = shl_int(x, y)
+# LLVM bit shifting (lshr_int, ashr_int and shl_int) has performance issues for large integers
+# The following functions allows much faster code (10x speedup for 1024 bit integers)
 
->>( x::UBI, y::Int) = ifelse(0 <= y, x >> unsigned(y),  x << unsigned(-y))
-<<( x::UBI, y::Int) = ifelse(0 <= y, x << unsigned(y),  x >> unsigned(-y))
->>>(x::UBI, y::Int) = ifelse(0 <= y, x >>> unsigned(y), x << unsigned(-y))
+# Note: this should be a power of 2
+const SHIFT_SPLIT_NBITS = 64
+
+@inline @generated function shift_call(sh_fun::Function, x::I, y::UBU) where {I<:XBI}
+    nbits = 8 * sizeof(I)
+    # check that no Integer < 128 bit in size went into this function
+    @assert nbits > 128
+    split = SHIFT_SPLIT_NBITS
+    mask = split - 1
+    quote
+        hi = y >> $(trailing_zeros(split))
+        $([:(hi == $val && return sh_fun(sh_fun(x, $(val * split)), y & $mask))
+            for val in 0:div(nbits, split)]...
+        )
+        (sh_fun == ashr_int && x < 0) ? -oneunit($I) : zero($I)
+    end
+end
+
+# performance issue does not affect integers with no more than 128 bits
+>>( x::XBS, y::UBU) = 8sizeof(typeof(x)) > 128 ? shift_call(ashr_int, x, y) : ashr_int(x, y)
+>>( x::XBU, y::UBU) = 8sizeof(typeof(x)) > 128 ? shift_call(lshr_int, x, y) : lshr_int(x, y)
+>>>(x::XBI, y::UBU) = 8sizeof(typeof(x)) > 128 ? shift_call(lshr_int, x, y) : lshr_int(x, y)
+<<( x::XBI, y::UBU) = 8sizeof(typeof(x)) > 128 ? shift_call(shl_int, x, y) : shl_int(x, y)
+
+>>( x::BBS, y::XBU) = ashr_int(x, y)
+>>( x::BBU, y::XBU) = lshr_int(x, y)
+>>>(x::BBI, y::XBU) = lshr_int(x, y)
+<<( x::BBI, y::XBU) = shl_int(x, y)
+
+@inline >>( x::UBI, y::Int) = 0 <= y ? x >> unsigned(y) :  x << unsigned(-y)
+@inline <<( x::UBI, y::Int) = 0 <= y ? x << unsigned(y) :  x >> unsigned(-y)
+@inline >>>(x::UBI, y::Int) = 0 <= y ? x >>> unsigned(y) : x << unsigned(-y)
 
 count_ones(    x::XBI) = Int(ctpop_int(x))
 leading_zeros( x::XBI) = Int(ctlz_int(x))
 trailing_zeros(x::XBI) = Int(cttz_int(x))
 
 function bswap(x::XBI)
-    if sizeof(x) % 2 != 0
+    if isodd(sizeof(x))
         # llvm instruction is invalid
-        error("unimplemented")
+        bswap_simple(x)
     else
         bswap_int(x)
     end
+end
+
+# llvm is clever enough to transform that into `bswap` of the input truncated to the correct
+# size (8 bits less), followed by a "funnel shift left" `fshl`
+function bswap_simple(x::XBI)
+    y = zero(x)
+    for _ = 1:sizeof(x)
+        y <<= 8
+        y |= x % UInt8
+        x >>>= 8
+    end
+    y
 end
 
 flipsign(x::T, y::T) where {T<:XBS} = flipsign_int(x, y)
 
 # this doesn't catch flipsign(x::BBS, y::BBS), which is more specific in Base
 flipsign(x::UBS, y::UBS) = flipsign_int(promote(x, y)...) % typeof(x)
+
+# Cheaper isodd, to avoid BigInt.  NOTE: Base.iseven is defined in terms of isodd.
+isodd(a::XBI) = isodd(a % Int)  # only depends on the final bit! :)
 
 
 # * arithmetic operations
@@ -342,8 +402,8 @@ flipsign(x::UBS, y::UBS) = flipsign_int(promote(x, y)...) % typeof(x)
 (+)(x::T, y::T) where {T<:XBI} = add_int(x, y)
 (*)(x::T, y::T) where {T<:XBI} = mul_int(x, y)
 
-div(x::XBS, y::Unsigned) = flipsign(signed(div(unsigned(abs(x)), y)), x)
-div(x::Unsigned, y::XBS) = unsigned(flipsign(signed(div(x, unsigned(abs(y)))), y))
+div(x::XBS, y::Unsigned, ::typeof(RoundToZero)) = flipsign(signed(div(unsigned(abs(x)), y)), x)
+div(x::Unsigned, y::XBS, ::typeof(RoundToZero)) = unsigned(flipsign(signed(div(x, unsigned(abs(y)))), y))
 
 rem(x::XBS, y::Unsigned) = flipsign(signed(rem(unsigned(abs(x)), y)), x)
 rem(x::Unsigned, y::XBS) = rem(x, unsigned(abs(y)))
@@ -351,10 +411,18 @@ rem(x::Unsigned, y::XBS) = rem(x, unsigned(abs(y)))
 mod(x::XBS, y::Unsigned) = rem(y + unsigned(rem(x, y)), y)
 
 # these operations fail LLVM for bigger types than UInt128
-div(x::T, y::T) where {T<:XBS} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_sdiv_int(x, y)
+div(x::T, y::T, ::typeof(RoundToZero)) where {T<:XBS} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_sdiv_int(x, y)
 rem(x::T, y::T) where {T<:XBS} = sizeof(T) > 16 ? T(rem(big(x), big(y))) : checked_srem_int(x, y)
-div(x::T, y::T) where {T<:XBU} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_udiv_int(x, y)
+div(x::T, y::T, ::typeof(RoundToZero)) where {T<:XBU} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_udiv_int(x, y)
 rem(x::T, y::T) where {T<:XBU} = sizeof(T) > 16 ? T(rem(big(x), big(y))) : checked_urem_int(x, y)
+
+# Compatibility fallbacks for the above definitions
+if VERSION < v"1.4.0-DEV.208"
+    div(x::XBS, y::Unsigned) = div(x, y, RoundToZero)
+    div(x::Unsigned, y::XBS) = div(x, y, RoundToZero)
+    div(x::T, y::T) where {T<:XBS} = div(x, y, RoundToZero)
+    div(x::T, y::T) where {T<:XBU} = div(x, y, RoundToZero)
+end
 
 # ** checked operations
 
@@ -422,6 +490,40 @@ end
 ndigits0zpb(x::XBS, b::Integer) = ndigits0zpb(unsigned(abs(x)), Int(b))
 ndigits0zpb(x::XBU, b::Integer) = ndigits0zpb(x, Int(b))
 
+bitstring(x::XBI) = string(reinterpret(uinttype(typeof(x)), x), pad = 8*sizeof(x), base = 2)
+
+
+# * read/write
+
+# write & read are used by serialize/deserialize
+
+write(s::IO, x::XBI) = write(s, Ref(x))
+
+# TODO: bad type signature, should not accept Union of XBIs
+function read(from::GenericIOBuffer, ::Type{T}) where {T<:XBI}
+    x = peek(from, T)
+    from.ptr += sizeof(T)
+    return x
+end
+
+function read(io::IO, ::Type{T}) where {T<:XBI}
+    return read!(io, Ref{T}(0))[]::T
+end
+
+function peek(from::GenericIOBuffer, ::Type{T}) where {T<:XBI}
+    from.readable || Base._throw_not_readable()
+    avail = bytesavailable(from)
+    nb = sizeof(T)
+    if nb > avail
+        throw(EOFError())
+    end
+    GC.@preserve from begin
+        ptr::Ptr{T} = pointer(from.data, from.ptr)
+        x = unsafe_load(ptr)
+    end
+    return x
+end
+
 
 # * rand
 
@@ -468,7 +570,7 @@ struct SamplerRangeFast{U<:XBU,T<:XBI} <: Sampler{T}
     mask::U   # mask generated values before threshold rejection
 end
 
-SamplerRangeFast(r::AbstractUnitRange{T}) where T<:BitInteger =
+SamplerRangeFast(r::AbstractUnitRange{T}) where T<:XBI =
     SamplerRangeFast(r, uinttype(T))
 
 function SamplerRangeFast(r::AbstractUnitRange{T}, ::Type{U}) where {T,U}
