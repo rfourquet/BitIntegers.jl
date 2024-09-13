@@ -407,11 +407,15 @@ rem(x::Unsigned, y::XBS) = rem(x, unsigned(abs(y)))
 
 mod(x::XBS, y::Unsigned) = rem(y + unsigned(rem(x, y)), y)
 
-# these operations fail LLVM for bigger types than UInt128
-div(x::T, y::T, ::typeof(RoundToZero)) where {T<:XBS} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_sdiv_int(x, y)
-rem(x::T, y::T) where {T<:XBS} = sizeof(T) > 16 ? T(rem(big(x), big(y))) : checked_srem_int(x, y)
-div(x::T, y::T, ::typeof(RoundToZero)) where {T<:XBU} = sizeof(T) > 16 ? T(div(big(x), big(y))) : checked_udiv_int(x, y)
-rem(x::T, y::T) where {T<:XBU} = sizeof(T) > 16 ? T(rem(big(x), big(y))) : checked_urem_int(x, y)
+# these operations fail LLVM for bigger types than UInt128 on Julia versions < 1.11
+div(x::T, y::T, ::typeof(RoundToZero)) where {T<:XBS} =
+    (sizeof(T) > 16 && VERSION < v"1.11-") ? T(div(big(x), big(y))) : checked_sdiv_int(x, y)
+rem(x::T, y::T) where {T<:XBS} =
+    (sizeof(T) > 16 && VERSION < v"1.11-") ? T(rem(big(x), big(y))) : checked_srem_int(x, y)
+div(x::T, y::T, ::typeof(RoundToZero)) where {T<:XBU} =
+    (sizeof(T) > 16 && VERSION < v"1.11-") ? T(div(big(x), big(y))) : checked_udiv_int(x, y)
+rem(x::T, y::T) where {T<:XBU} =
+    (sizeof(T) > 16 && VERSION < v"1.11-") ? T(rem(big(x), big(y))) : checked_urem_int(x, y)
 
 # Compatibility fallbacks for the above definitions
 if VERSION < v"1.4.0-DEV.208"
