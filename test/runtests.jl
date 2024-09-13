@@ -271,8 +271,10 @@ end
                  T
             @test op(X(5), Y(2)) isa TT
             @test op(X(5), Y(2)) == op(5, 2)
-            if (VERSION >= v"1.11-" || sizeof(T) <= 16) && sizeof(X) != 3 && sizeof(Y) != 3 # bug with [U]Int24
-                @test @allocated(op(X(5), Y(2))) == 0
+            if VERSION >= v"1.11-" || sizeof(T) <= 16
+                f = (op, X, Y) -> op(X(5), Y(2))
+                f(op, X, Y)
+                @test @allocated(f(op, X, Y)) == 0
             end
         end
     end
