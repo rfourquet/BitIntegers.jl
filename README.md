@@ -38,7 +38,8 @@ make LLVM abort the program, while it was fine for `Int256`).
 
 There are another couple of outstanding issues:
 
-1) the intrinsics for division operations used to make LLVM fail for widths greater than 128 bits,
+1) prior to Julia version 1.11: the intrinsics for division operations used to make LLVM fail for widths
+greater than 128 bits,
 so they are here implemented via conversion to `BigInt` first, which makes them quite slow;
 it got slightly better in recent julia (nightly pre-1.10), where it prints
 `JIT session error: Symbols not found: [ __divei4 ]` but at least doesn't abort.
@@ -53,6 +54,12 @@ https://github.com/JuliaLang/julia/pull/33283).
 
 
 ## Release notes
+
+### v0.3.2
+
+* add `bitrotate` ([#42](https://github.com/rfourquet/BitIntegers.jl/pull/42))
+* fix performance bug for `iseven` ([#44](https://github.com/rfourquet/BitIntegers.jl/pull/44))
+* faster division for types bigger than 16 bytes on julia v1.11 ([#48](https://github.com/rfourquet/BitIntegers.jl/pull/48))
 
 ### v0.3.1
 
