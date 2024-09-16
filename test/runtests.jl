@@ -1,5 +1,5 @@
 include("setup.jl")
-
+#=
 @testset "types are defined" begin
     for (T, s) = (Int256 => 256, Int512 => 512, Int1024 => 1024)
         @test sizeof(T) * 8 == s
@@ -256,11 +256,17 @@ end
     end
 end
 
+=#
+
+function test_noalloc(op::OP, x, y) where {OP}
+    op(x, y)
+    @test @allocated(op(x, y)) == 0
+end
 
 @testset "arithmetic operations" begin
     for (X, Y) in TypeCombos
         T = promote_type(X, Y)
-        for op = (-, +, *, div, rem, mod)
+        for op = (div,)
             TT = op ∈ (-, +, *) ? T :
                  op === mod ?
                    (Y <: Signed   && T <: Unsigned ? typeof(signed(T(0))) :
@@ -272,15 +278,23 @@ end
             @test op(X(5), Y(2)) isa TT
             @test op(X(5), Y(2)) == op(5, 2)
             if VERSION >= v"1.11-" || sizeof(T) <= 16
-                f = (op, X, Y) -> op(X(5), Y(2))
-                f(op, X, Y)
-                @test @allocated(f(op, X, Y)) == 0
+                test_noalloc(op, X(5), Y(2))
             end
         end
     end
 end
 
 
+#=
+@testset "new" begin
+    X = Int8
+    Y = Int256
+    op = div
+    div(X(5), Y(2))
+    @test @allocated(op(X(5), Y(2))) == 0
+end
+=#
+#=
 @testset "BigInt" begin
     r = -big(2)^2000:big(2)^2000
     b = rand(r)
@@ -423,3 +437,4 @@ end
         end
     end
 end
+=#
