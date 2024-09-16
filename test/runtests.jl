@@ -257,6 +257,22 @@ end
 end
 
 
+@testset "bit rotations" begin
+    for X in XInts
+        x = X(24)
+        l = 8*sizeof(X)
+        @test bitrotate(x, 2) == 4*x
+        @test bitrotate(x, l-1) == div(x, 2)
+        x = rand(X)
+        for k in (0, UInt8(13), UInt32(371), Int16(-123), Int64(-1072), BigInt(-21330))
+            y = @inferred bitrotate(x, k)
+            @test y isa X && bitrotate(y, k) == bitrotate(x, 2*k)
+            k isa Signed && @test bitrotate(y, -k) == x
+        end
+    end
+end
+
+
 function test_noalloc(op::OP, x, y) where {OP}
     @test @allocated(op(x, y)) == 0
 end
