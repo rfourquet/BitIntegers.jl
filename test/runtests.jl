@@ -273,6 +273,10 @@ end
 end
 
 
+function test_noalloc(op::OP, x, y) where {OP}
+    @test @allocated(op(x, y)) == 0
+end
+
 @testset "arithmetic operations" begin
     for (X, Y) in TypeCombos
         T = promote_type(X, Y)
@@ -287,6 +291,9 @@ end
                  T
             @test op(X(5), Y(2)) isa TT
             @test op(X(5), Y(2)) == op(5, 2)
+            if VERSION >= v"1.11-" || sizeof(T) <= 16
+                test_noalloc(op, X(5), Y(2))
+            end
         end
     end
 end
