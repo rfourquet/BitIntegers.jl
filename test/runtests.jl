@@ -233,6 +233,7 @@ end
         @test isodd(y) == isodd(j) == !iseven(y)
         # Test performance of isodd(x): doesn't allocate.
         @test @allocated(isodd(x) && isodd(y)) == 0
+        @test @allocated(iseven(x) && iseven(y)) == 0
     end
 end
 

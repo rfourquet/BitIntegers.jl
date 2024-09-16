@@ -2,6 +2,8 @@ using BitIntegers, Test
 using Statistics: mean
 using Serialization: serialize, deserialize
 
+# while v1.4 and below are supported:
+using BitIntegers: bitrotate
 
 module TestBitIntegers
 

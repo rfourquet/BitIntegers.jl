@@ -3,8 +3,7 @@
 module BitIntegers
 
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
-             bitrotate,
-             bitstring, bswap, checked_abs, count_ones, div, flipsign, isodd, leading_zeros,
+             bitstring, bswap, checked_abs, count_ones, div, flipsign, isodd, iseven, leading_zeros,
              mod, mul_with_overflow, ndigits0zpb, peek, promote_rule, read, rem, signed,
              sub_with_overflow, trailing_zeros, typemax, typemin, unsigned, write, xor
 
@@ -29,6 +28,10 @@ if VERSION >= v"1.4.0-DEV.114"
     check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(T, x)
 else
     check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(x)
+end
+
+if VERSION >= v"1.5"
+    import Base: bitrotate
 end
 
 
@@ -395,9 +398,10 @@ flipsign(x::T, y::T) where {T<:XBS} = flipsign_int(x, y)
 # this doesn't catch flipsign(x::BBS, y::BBS), which is more specific in Base
 flipsign(x::UBS, y::UBS) = flipsign_int(promote(x, y)...) % typeof(x)
 
-# Cheaper isodd, to avoid BigInt.
-isodd(a::XBI) = isodd(a % Int)  # only depends on the final bit! :)
-iseven(a::XBI) = iseven(a % Int)  # only depends on the final bit! :)
+# Cheaper isodd/iseven, to avoid BigInt: it only depends on the final bit! :)
+isodd(a::XBI) = isodd(a % Int)
+iseven(a::XBI) = iseven(a % Int)
+
 
 # * arithmetic operations
 
