@@ -442,3 +442,15 @@ end
         end
     end
 end
+
+@testset "aqua" begin
+    using Aqua
+    Aqua.test_all(BitIntegers; deps_compat = false, piracies=false)
+    Aqua.test_deps_compat(BitIntegers; ignore=[:Random], check_extras=false)
+    # BitIntegers defines methods such as `<(::UBS, ::UBU)` which is (probably
+    # benign) type piracy.
+    Aqua.test_piracies(BitIntegers; treat_as_own = [Int128, Int16, Int64, Int32, Int8])
+
+    # And test the new method for disambiguation
+    @test Int256(BigFloat(3)) === Int256(3)
+end
