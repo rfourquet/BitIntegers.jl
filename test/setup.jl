@@ -5,7 +5,7 @@ using Serialization: serialize, deserialize
 # while v1.4 and below are supported:
 using BitIntegers: bitrotate
 
-module TestBitIntegers
+module TestBitIntegers ########################################################
 
 using BitIntegers, Test
 
@@ -37,7 +37,7 @@ BitIntegers.@define_integers 8  MyInt8 MyUInt8
     @test MyUInt8 <: Unsigned
 end
 
-end # module TestBitIntegers
+end # module TestBitIntegers ##################################################
 
 using .TestBitIntegers: Int24, UInt24, I24, U24, MyInt8, MyUInt8
 
