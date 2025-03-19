@@ -19,6 +19,23 @@ include("setup.jl")
     end
 end
 
+@testset "show" begin
+    @test string(MyInt8(1)) == "1" # issue #34
+    @test sprint(show, MyInt8(1)) == "1"
+    @test sprint(show, MyUInt8(1)) == "0x01"
+    for XX = (MyInt8, MyUInt8)
+        for _=1:5
+            xx = rand(XX)
+            @test string(xx) == string(Int(xx))
+            @test string(xx, base=16) == string(Int(xx), base=16)
+        end
+    end
+    for XX in XInts
+        xx = rand(XX)
+        @test string(xx) == string(big(xx))
+        @test string(xx, base=16) == string(big(xx), base=16)
+    end
+end
 
 @testset "string macros" begin
     @test   int256"1" ===   Int256(1)

@@ -55,6 +55,14 @@ https://github.com/JuliaLang/julia/pull/33283).
 
 ## Release notes
 
+### v0.3.4
+
+* make `show` work for 8-bits signed integers ([#51](https://github.com/rfourquet/BitIntegers.jl/pull/51))
+
+### v0.3.3
+
+* fix a method ambiguity with `BigFloat` ([#50](https://github.com/rfourquet/BitIntegers.jl/pull/50))
+
 ### v0.3.2
 
 * add `bitrotate` ([#42](https://github.com/rfourquet/BitIntegers.jl/pull/42))

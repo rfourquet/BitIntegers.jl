@@ -74,6 +74,15 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
         Base.widen(::Type{$(esc(SI))}) = $(esc(WSI))
         Base.widen(::Type{$(esc(UI))}) = $(esc(WUI))
 
+        if $n == 8
+            # at least from julia v1.6, a specific method is defined for Int8/UInt8,
+            # which is indirectly needed for example for `show`
+            # (more specifically for check_top_bit in convertto)
+            @inline function Core.is_top_bit_set(x::Union{$(esc(SI)), $(esc(UI))})
+                Core.eq_int(lshr_int(x, 7), trunc_int(typeof(x), 1))
+            end
+        end
+
         macro $(esc(sistr))(s)
             return parse($(esc(SI)), s)
         end
