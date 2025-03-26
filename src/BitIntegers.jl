@@ -3,9 +3,11 @@
 module BitIntegers
 
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
-             bitstring, bswap, checked_abs, count_ones, div, flipsign, isodd, iseven, leading_zeros,
+             bitstring, bswap, checked_abs, count_ones, div, flipsign, hash, isodd, iseven,
+             leading_zeros,
              mod, mul_with_overflow, ndigits0zpb, peek, promote_rule, read, rem, signed,
-             sub_with_overflow, trailing_zeros, typemax, typemin, unsigned, write, xor
+             sub_with_overflow, top_set_bit, trailing_zeros, typemax, typemin, unsigned,
+             write, xor
 
 using Base: GenericIOBuffer, add_int, and_int, ashr_int, bswap_int, checked_sadd_int,
             checked_sdiv_int, checked_smul_int, checked_srem_int, checked_ssub_int,
@@ -82,6 +84,14 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
                 Core.eq_int(lshr_int(x, 7), trunc_int(typeof(x), 1))
             end
         end
+
+        if $n < 64
+            Base.hash(x::Union{$(esc(SI)), $(esc(UI))}, h::UInt) = hash(Int64(x), h)
+        elseif $n == 64
+            Base.hash(x::Union{$(esc(SI)), $(esc(UI))}, h::UInt) = hash(bitcast(UInt64, x), h)
+        end
+        # currently no specific method is defined for [U]Int128, so the generic hash
+        # will work as well for integers bigger than 64 bits
 
         macro $(esc(sistr))(s)
             return parse($(esc(SI)), s)
@@ -411,6 +421,9 @@ flipsign(x::UBS, y::UBS) = flipsign_int(promote(x, y)...) % typeof(x)
 # Cheaper isodd/iseven, to avoid BigInt: it only depends on the final bit! :)
 isodd(a::XBI) = isodd(a % Int)
 iseven(a::XBI) = iseven(a % Int)
+
+# same definition as for Base.BitInteger; necessary e.g. for faster hashing
+top_set_bit(x::XBI) = 8sizeof(x) - leading_zeros(x)
 
 
 # * arithmetic operations

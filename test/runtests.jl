@@ -192,6 +192,16 @@ end
 end
 
 
+@testset "hash" begin
+    for X in (XInts..., I32, U32, I64, U64, MyInt8, MyUInt8)
+        for xx in rand(X, 4)
+            hh = rand(UInt)
+            @test hash(xx, hh) == hash(big(xx), hh)
+        end
+    end
+end
+
+
 @testset "bit operations" begin
     i, j = rand(1:Int(typemax(Int8)), 2)
     k, l = rand(Int(typemin(Int8)):-1, 2)
