@@ -55,6 +55,10 @@ https://github.com/JuliaLang/julia/pull/33283).
 
 ## Release notes
 
+### v0.3.5
+
+* faster `hash`, on par with `Base` types ([#52](https://github.com/rfourquet/BitIntegers.jl/pull/52))
+
 ### v0.3.4
 
 * make `show` work for 8-bits signed integers ([#51](https://github.com/rfourquet/BitIntegers.jl/pull/51))
