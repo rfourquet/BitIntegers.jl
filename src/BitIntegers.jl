@@ -91,7 +91,10 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
         if $n < 64
             Base.hash(x::Union{$(esc(SI)), $(esc(UI))}, h::UInt) = hash(Int64(x), h)
         elseif $n == 64
-            Base.hash(x::Union{$(esc(SI)), $(esc(UI))}, h::UInt) = hash(bitcast(UInt64, x), h)
+            # these two methods must remain separate, as before v1.6, the second definition
+            # is wrong for negative integers of type SI
+            Base.hash(x::$(esc(SI)), h::UInt) = hash(bitcast(Int64, x), h)
+            Base.hash(x::$(esc(UI)), h::UInt) = hash(bitcast(UInt64, x), h)
         end
         # currently no specific method is defined for [U]Int128, so the generic hash
         # will work as well for integers bigger than 64 bits
