@@ -3,7 +3,8 @@
 module BitIntegers
 
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
-             bitstring, bswap, checked_abs, count_ones, div, flipsign, isodd, iseven, leading_zeros,
+             bitstring, bswap, checked_abs, count_ones, div, flipsign, hash, isodd, iseven,
+             leading_zeros,
              mod, mul_with_overflow, ndigits0zpb, peek, promote_rule, read, rem, signed,
              sub_with_overflow, trailing_zeros, typemax, typemin, unsigned, write, xor
 
@@ -28,6 +29,10 @@ if VERSION >= v"1.4.0-DEV.114"
     check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(T, x)
 else
     check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(x)
+end
+
+if isdefined(Base, :top_set_bit)
+    import Base: top_set_bit
 end
 
 if VERSION >= v"1.5"
@@ -82,6 +87,17 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
                 Core.eq_int(lshr_int(x, 7), trunc_int(typeof(x), 1))
             end
         end
+
+        if $n < 64
+            Base.hash(x::Union{$(esc(SI)), $(esc(UI))}, h::UInt) = hash(Int64(x), h)
+        elseif $n == 64
+            # these two methods must remain separate, as before v1.6, the second definition
+            # is wrong for negative integers of type SI
+            Base.hash(x::$(esc(SI)), h::UInt) = hash(bitcast(Int64, x), h)
+            Base.hash(x::$(esc(UI)), h::UInt) = hash(bitcast(UInt64, x), h)
+        end
+        # currently no specific method is defined for [U]Int128, so the generic hash
+        # will work as well for integers bigger than 64 bits
 
         macro $(esc(sistr))(s)
             return parse($(esc(SI)), s)
@@ -411,6 +427,9 @@ flipsign(x::UBS, y::UBS) = flipsign_int(promote(x, y)...) % typeof(x)
 # Cheaper isodd/iseven, to avoid BigInt: it only depends on the final bit! :)
 isodd(a::XBI) = isodd(a % Int)
 iseven(a::XBI) = iseven(a % Int)
+
+# same definition as for Base.BitInteger; necessary e.g. for faster hashing
+top_set_bit(x::XBI) = 8sizeof(x) - leading_zeros(x)
 
 
 # * arithmetic operations

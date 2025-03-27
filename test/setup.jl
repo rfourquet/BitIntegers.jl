@@ -9,13 +9,17 @@ module TestBitIntegers ########################################################
 
 using BitIntegers, Test
 
-BitIntegers.@define_integers 24
-BitIntegers.@define_integers 24 I24 U24 # to test mixed operations with Int24
-BitIntegers.@define_integers 200
-BitIntegers.@define_integers 8  MyInt8 MyUInt8
+@define_integers 24
+@define_integers 24 I24 U24 # to test mixed operations with Int24
+@define_integers 200
+@define_integers 8  MyInt8 MyUInt8
+
+# only for specific tests:
+@define_integers 32 I32 U32
+@define_integers 64 I64 U64
 
 # the following should throw, but is hard to test:
-# BitIntegers.@define_integers 8 MyInt8
+# @define_integers 8 MyInt8
 
 @testset "definitions" begin
     @test @isdefined Int24
@@ -39,7 +43,7 @@ end
 
 end # module TestBitIntegers ##################################################
 
-using .TestBitIntegers: Int24, UInt24, I24, U24, MyInt8, MyUInt8
+using .TestBitIntegers: Int24, UInt24, I24, U24, MyInt8, MyUInt8, I32, U32, I64, U64
 
 const BInts = Base.BitInteger_types
 const XInts = (BitIntegers.BitInteger_types..., TestBitIntegers.UInt24, TestBitIntegers.Int24)
