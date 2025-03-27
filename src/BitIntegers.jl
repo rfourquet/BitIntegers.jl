@@ -6,8 +6,7 @@ import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_o
              bitstring, bswap, checked_abs, count_ones, div, flipsign, hash, isodd, iseven,
              leading_zeros,
              mod, mul_with_overflow, ndigits0zpb, peek, promote_rule, read, rem, signed,
-             sub_with_overflow, top_set_bit, trailing_zeros, typemax, typemin, unsigned,
-             write, xor
+             sub_with_overflow, trailing_zeros, typemax, typemin, unsigned, write, xor
 
 using Base: GenericIOBuffer, add_int, and_int, ashr_int, bswap_int, checked_sadd_int,
             checked_sdiv_int, checked_smul_int, checked_srem_int, checked_ssub_int,
@@ -30,6 +29,10 @@ if VERSION >= v"1.4.0-DEV.114"
     check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(T, x)
 else
     check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(x)
+end
+
+if isdefined(Base, :top_set_bit)
+    import Base: top_set_bit
 end
 
 if VERSION >= v"1.5"
