@@ -1,5 +1,5 @@
 module Intrinsics
-import ..BitSized 
+import ..BitSized, ..bitsizeof
 
 #=
 We need to make intrinsics aware of bit sized integers.
@@ -16,15 +16,10 @@ const intrinsics = (:add_int, :and_int, :ashr_int, :bswap_int,
                     :ctpop_int, :cttz_int, :flipsign_int, :lshr_int,
                     :mul_int, :ndigits0z, :ndigits0znb, :neg_int,
                     :not_int, :or_int, :shl_int, :sitofp, :sle_int,
-                    :slt_int, :sub_int, :uinttype, :uitofp, :ule_int,
+                    :slt_int, :sub_int, :uitofp, :ule_int,
                     :ult_int, :xor_int)
 
-bitsizeof(::T) where T = 8sizeof(T)
-bitsizeof(::Type{T}) where T = 8sizeof(T)
-bitsizeof(::BitSized{N}) where N = N
-bitsizeof(::Type{<:BitSized{N}}) where N = N
-
-onearg = (:ctlz_int, :ctpop_int, :neg_int, :not_int, :bswap_int)
+onearg = (:ctlz_int, :ctpop_int, :cttz_int, :neg_int, :not_int, :bswap_int)
 
 twoarg = (:add_int, :and_int, :ashr_int, :checked_sadd_int,
            :checked_sdiv_int, :checked_smul_int, :checked_srem_int,
@@ -47,6 +42,7 @@ end
 for F in onearg
     @eval $F(x) = Core.Intrinsics.$F(x)
 end
+
 
 for F in (onearg..., twoarg...)
     @eval $F(x::BitSized...) = error("Unimplemented intrinsic ", $F)
@@ -73,9 +69,9 @@ end
 @generated function Base.typemin(::Type{T}) where {N,T<:BitSized{N}}
     S = 8sizeof(T)
     code = """
-    %2 = shl i$N 1, $(N-1)
-    %3 = zext i$N %2 to i$S
-    ret i$S %3
+    %s = shl i$N 1, $(N-1)
+    %r = zext i$N %s to i$S
+    ret i$S %r
     """
     quote
         Base.llvmcall($code, T, Tuple{})
@@ -86,13 +82,13 @@ end
     S = 8sizeof(T)
     if T <: Signed
         code = """
-        %2 = zext i$(N-1) -1 to i$S
-        ret i$S %2
+        %r = zext i$(N-1) -1 to i$S
+        ret i$S %r
         """
     else
         code = """
-        %3 = zext i$N -1 to i$S
-        ret i$S %3
+        %r = zext i$N -1 to i$S
+        ret i$S %r
         """
     end
     quote
@@ -153,16 +149,19 @@ for F in (:ctlz, :ctpop, :cttz)
     ex = quote
         @generated function $ifun(x::T) where {N, T<:BitSized{N}}
             S = 8sizeof(T)
-            is = Sys.WORD_SIZE
             F = $(QuoteNode(F))
-            code = """
-            %3 = trunc i$S %0 to i$N
-            %4 = call i$N @llvm.$F.i$N(i$N %3)
-            %5 = zext i$N %4 to i$is
-            ret i$is %5
-            """
+            sfun = string($ifun)
+            code = ("""
+            declare i$N @llvm.ctlz.i$N(i$N)
+            define i$S @$sfun(i$S %0) {
+            %x = trunc i$S %0 to i$N
+            %ct = call i$N @llvm.$F.i$N(i$N %x)
+            %ret = zext i$N %ct to i$S
+            ret i$S %ret
+            }
+            """, string(sfun))
             quote
-                Base.llvmcall($code, Int, Tuple{T}, x)
+                Base.llvmcall($code, T, Tuple{T}, x)
             end
         end
     end
@@ -205,15 +204,14 @@ end
     M = @__MODULE__
     llvmname = string(M, ".check_sdiv_int", S)
     io = IOBuffer()
-    show(io, typemin(T))
-    tmin = String(take!(io))
     code = ("""
     declare void @ijl_throw(ptr)
     declare ptr @jl_diverror_exception()
     define i$S @$llvmname(i$S %x, i$S %y) {
       %num = trunc i$S %x to i$N
       %denom = trunc i$S %y to i$N
-      %1 = icmp ne i$N %num, $tmin
+      %tmin = shl i$N 1, $(N-1)
+      %1 = icmp ne i$N %num, %tmin
       %2 = icmp ne i$N %denom, -1
       %3 = or i1 %1, %2
       %4 = icmp ne i$N %denom, 0
@@ -305,9 +303,8 @@ end
 
 # what's left
 #=
-(
- :ndigits0z, :ndigits0znb, 
- :uinttype)
+( :ndigits0z, :ndigits0znb)
+
 
 bitcast, sext_int,
             trunc_int, zext_int
@@ -331,13 +328,12 @@ end
     (N % 8) == (RN % 8) == 0 && return :(Core.Intrinsics.trunc_int(RT, x))
     S = 8sizeof(T)
     RS = 8sizeof(RT)
-
     prep = N == S ? "%x = or i$N %0, 0" : "%x = trunc i$S %0 to i$N"
-    zext = N == RS ? "%ret = or i$N %x, 0" :
-        N < RS ? "%ret = zext i$N %x to i$RS" :
-        "%ret = trunc i$N %x to i$RS"
+    zext = RN == RS ? "%ret = or i$RN %r, 0" :
+        "%ret = zext i$RN %r to i$RS" 
     code = """
          $prep
+         %r = trunc i$N %x to i$RN
          $zext
          ret i$RS %ret
     """
@@ -382,7 +378,7 @@ end
     RN ≤ N && error("ZExt: output bitsize must be > input bitsize")
     S = 8sizeof(T)
     RS = 8sizeof(RT)
-    prep = S == N ? "%x = %0" : "%x = trunc i$S %0 to i$N"
+    prep = S == N ? "%x = or i$S %0, 0" : "%x = trunc i$S %0 to i$N"
     ext = N == RN ? "%r.0 = or i$x %x, 0" : "%r.0 = zext i$N %x to i$RN"
     zext = RN == RS ? "%r = or i$RN %r.0, 0" : "%r = zext i$RN %r.0 to i$RS"
     ret = "ret i$RS %r"
