@@ -2,13 +2,18 @@
 
 module BitIntegers
 
+include("bitsized/bitsized.jl")
+using .BitSizedIntegers: BitSizedIntegers, Intrinsics
+
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
              bitstring, bswap, checked_abs, count_ones, div, flipsign, hash, isodd, iseven,
              leading_zeros,
              mod, mul_with_overflow, ndigits0zpb, peek, promote_rule, read, rem, signed,
              sub_with_overflow, trailing_zeros, typemax, typemin, unsigned, write, xor
 
-using Base: GenericIOBuffer, add_int, and_int, ashr_int, bswap_int, checked_sadd_int,
+using Base: GenericIOBuffer
+
+using Intrinsics: add_int, and_int, ashr_int, bswap_int, checked_sadd_int,
             checked_sdiv_int, checked_smul_int, checked_srem_int, checked_ssub_int,
             checked_uadd_int, checked_udiv_int, checked_umul_int, checked_urem_int,
             checked_usub_int, ctlz_int, ctpop_int, cttz_int, flipsign_int, lshr_int, mul_int,
@@ -17,7 +22,7 @@ using Base: GenericIOBuffer, add_int, and_int, ashr_int, bswap_int, checked_sadd
 
 using Base.GMP: ispos, Limb
 
-using Core: bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
+using Intrinsics: bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
 
 import Random: rand, Sampler
