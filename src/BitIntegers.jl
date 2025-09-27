@@ -2,8 +2,14 @@
 
 module BitIntegers
 
+# * types definition 
+
+abstract type AbstractBitUnsigned <: Unsigned end
+abstract type AbstractBitSigned   <: Signed   end
+
+
 include("bitsized/bitsized.jl")
-using .BitSizedIntegers: BitSizedIntegers, Intrinsics
+using .BitSizedIntegers: BitSizedIntegers as BSI, Intrinsics
 
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
              bitstring, bswap, checked_abs, count_ones, div, flipsign, hash, isodd, iseven,
@@ -13,7 +19,7 @@ import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_o
 
 using Base: GenericIOBuffer
 
-using Intrinsics: add_int, and_int, ashr_int, bswap_int, checked_sadd_int,
+using .Intrinsics: add_int, and_int, ashr_int, bswap_int, checked_sadd_int,
             checked_sdiv_int, checked_smul_int, checked_srem_int, checked_ssub_int,
             checked_uadd_int, checked_udiv_int, checked_umul_int, checked_urem_int,
             checked_usub_int, ctlz_int, ctpop_int, cttz_int, flipsign_int, lshr_int, mul_int,
@@ -22,7 +28,7 @@ using Intrinsics: add_int, and_int, ashr_int, bswap_int, checked_sadd_int,
 
 using Base.GMP: ispos, Limb
 
-using Intrinsics: bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
+using .Intrinsics: bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
 
 import Random: rand, Sampler
@@ -45,12 +51,6 @@ if VERSION >= v"1.5"
 end
 
 
-# * types definition & aliases
-
-abstract type AbstractBitUnsigned <: Unsigned end
-abstract type AbstractBitSigned   <: Signed   end
-
-
 # ** @define_integers
 
 macro define_integers(n::Int, SI=nothing, UI=nothing)
@@ -70,12 +70,21 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
 
     sistr = Symbol(lowercase(string(SI)), :_str)
     uistr = Symbol(lowercase(string(UI)), :_str)
-
+    if n % 8 == 0
+        primitive_def = quote
+            primitive type $(esc(SI)) <: AbstractBitSigned   $n end
+            primitive type $(esc(UI)) <: AbstractBitUnsigned $n end
+        end
+    else
+        bytes = 8cld(n, 8)
+        primitive_def = quote
+            primitive type $(esc(SI)) <: BSI.SignedBitSized{$n}   $bytes end
+            primitive type $(esc(UI)) <: BSI.UnsignedBitSized{$n} $bytes end
+        end
+    end
     quote
         # `esc` is necessary only on versions < 1.1
-        primitive type $(esc(SI)) <: AbstractBitSigned   $n end
-        primitive type $(esc(UI)) <: AbstractBitUnsigned $n end
-
+        $primitive_def
         Base.Signed(x::$(esc(UI)))   = $(esc(SI))(x)
         Base.Unsigned(x::$(esc(SI))) = $(esc(UI))(x)
         Base.uinttype(::Type{$(esc(SI))}) = $(esc(UI))

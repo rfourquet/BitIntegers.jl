@@ -7,15 +7,14 @@ using ..BitSizedIntegers
 end
 
 import .ITypes: ITypes
-
-
+import ..AbstractBitSigned, ..AbstractBitUnsigned
 #=
 The idea is to round up the storage size to nearest multiple of 8, i.e. whole bytes.
 The unused bits are set to zero.
 =#
 
-abstract type SignedBitSized{N} <: Signed end
-abstract type UnsignedBitSized{N} <: Unsigned end
+abstract type SignedBitSized{N} <: AbstractBitSigned end
+abstract type UnsignedBitSized{N} <: AbstractBitUnsigned end
 BitSized{N} = Union{SignedBitSized{N}, UnsignedBitSized{N}}
 
 function Base.show(io::IO, ::Type{T}) where {N, T<:BitSized{N}}

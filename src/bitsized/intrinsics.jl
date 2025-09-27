@@ -24,8 +24,7 @@ bitsizeof(::Type{T}) where T = 8sizeof(T)
 bitsizeof(::BitSized{N}) where N = N
 bitsizeof(::Type{<:BitSized{N}}) where N = N
 
-onearg = (:ctlz_int, :ctpop_int, :neg_int, :not_int, :bswap_int, 
-          :uinttype)
+onearg = (:ctlz_int, :ctpop_int, :neg_int, :not_int, :bswap_int)
 
 twoarg = (:add_int, :and_int, :ashr_int, :checked_sadd_int,
            :checked_sdiv_int, :checked_smul_int, :checked_srem_int,
@@ -71,7 +70,7 @@ end
 
 
 
-@generated function typemin(::Type{T}) where {N,T<:BitSized{N}}
+@generated function Base.typemin(::Type{T}) where {N,T<:BitSized{N}}
     S = 8sizeof(T)
     code = """
     %2 = shl i$N 1, $(N-1)
@@ -83,7 +82,7 @@ end
     end
 end
 
-@generated function typemax(::Type{T}) where {N, T<:BitSized{N}}
+@generated function Base.typemax(::Type{T}) where {N, T<:BitSized{N}}
     S = 8sizeof(T)
     if T <: Signed
         code = """
@@ -208,7 +207,6 @@ end
     io = IOBuffer()
     show(io, typemin(T))
     tmin = String(take!(io))
-    println("tmin: ",tmin)
     code = ("""
     declare void @ijl_throw(ptr)
     declare ptr @jl_diverror_exception()
@@ -231,7 +229,7 @@ end
       ret i$S %r
     }
     """, llvmname)
-    println(code[1])
+
     quote
         Base.llvmcall($code, T, Tuple{T,T}, x, y)
     end
