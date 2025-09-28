@@ -52,7 +52,7 @@ end
         @test typemin(X) < typemax(X)
         if X <: Unsigned
             @test typemin(X) == 0
-            @test count_ones(typemax(X)) == 8 * sizeof(X)
+            @test count_ones(typemax(X)) == bitsizeof(X)
         else
             @test typemin(X) < 0 && typemax(X) > 0
             # @test typemin(X) - 1 == typemax(X)
@@ -121,9 +121,9 @@ end
 @testset "promote_rule" begin
     for (X, Y) in TypeCombos
         T = promote_type(X, Y)
-        if sizeof(X) > sizeof(Y)
+        if bitsizeof(X) > bitsizeof(Y)
             @test T === X
-        elseif sizeof(X) == sizeof(Y)
+        elseif bitsizeof(X) == bitsizeof(Y)
             @test T === (X <: Unsigned ? X : Y)
         else
             @test T == Y
@@ -206,33 +206,34 @@ end
     i, j = rand(1:Int(typemax(Int8)), 2)
     k, l = rand(Int(typemin(Int8)):-1, 2)
     for X in XInts
-        for op in (~, bswap)
-            x = op(X(i))
-            @test x isa X
-            @test x != X(i) # we assume sizeof(X) > 8
-            @test op(x) == X(i)
-        end
-        # bswap specific
-        if VERSION >= v"1.6"
-            for y = rand(X, 20)
-                x = bswap(y)
-                if iseven(sizeof(x))
-                    # test that default implemented matches bswap_simple
-                    @test x == BitIntegers.bswap_simple(y)
-                else
-                    # test that default implemented (i.e. bswap_simple) matches bswap_odd
-                    @test x == bswap_odd(y)
+        if ! (X <: BitIntegers.BitSizedIntegers.BitSized)
+            for op in (~, bswap)
+                x = op(X(i))
+                @test x isa X
+                @test x != X(i) # we assume sizeof(X) > 8
+                @test op(x) == X(i)
+            end
+            # bswap specific
+            if VERSION >= v"1.6"
+                for y = rand(X, 20)
+                    x = bswap(y)
+                    if iseven(sizeof(x))
+                        # test that default implemented matches bswap_simple
+                        @test x == BitIntegers.bswap_simple(y)
+                    else
+                        # test that default implemented (i.e. bswap_simple) matches bswap_odd
+                        @test x == bswap_odd(y)
+                    end
                 end
             end
         end
-
         for op in (count_ones, leading_zeros, trailing_zeros, leading_ones, trailing_ones)
             r = op(X(i))
             @test r isa Int
             if op ∈ (count_ones, trailing_ones, trailing_zeros, leading_ones)
                 @test r === op(i)
             else # leading_zeros
-                @test r == op(i) + 8 * (sizeof(X) - sizeof(i))
+                @test r == op(i) + bitsizeof(X) - bitsizeof(i)
             end
         end
     end
@@ -272,7 +273,7 @@ end
     shifts = Integer[sh_cts..., -sh_cts..., sh_rnd..., -sh_rnd...]
     for X in XInts
         for val in vals
-            mask = big(1) << (8 * sizeof(X)) - 1
+            mask = big(1) << bitsizeof(X) - 1
             x = val % X
             b = big(x)
             for s in shifts
@@ -288,7 +289,7 @@ end
 @testset "bit rotations" begin
     for X in XInts
         x = X(24)
-        l = 8*sizeof(X)
+        l = bitsizeof(X)
         @test bitrotate(x, 2) == 4*x
         @test bitrotate(x, l-1) == div(x, 2)
         x = rand(X)
@@ -435,13 +436,13 @@ end
         @test rand(a:b) ∈ a:b
 
         # scalars
-        ispow2(sizeof(X)) || VERSION >= v"1.4" || continue # cf. Issue #29053
+        ispow2(bitsizeof(X)) || VERSION >= v"1.4" || continue # cf. Issue #29053
         A = rand(X, 3000)
-        for a = (ispow2(sizeof(X)) ? [A, bswap.(A)] : [A])
+        for a = (ispow2(bitsizeof(X)) ? [A, bswap.(A)] : [A])
             for f in (leading_zeros, leading_ones, trailing_zeros, trailing_ones)
                 @test 0.9 < mean(f.(a)) < 1.1
             end
-            @test 8*sizeof(X)÷2 - 1 < mean(count_ones.(a)) < 8*sizeof(X)÷2 + 1
+            @test bitsizeof(X)÷2 - 1 < mean(count_ones.(a)) < bitsizeof(X)÷2 + 1
         end
     end
 end

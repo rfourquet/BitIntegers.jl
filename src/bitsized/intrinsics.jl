@@ -68,11 +68,15 @@ end
 
 @generated function Base.typemin(::Type{T}) where {N,T<:BitSized{N}}
     S = 8sizeof(T)
-    code = """
-    %s = shl i$N 1, $(N-1)
-    %r = zext i$N %s to i$S
-    ret i$S %r
-    """
+    if T <: Signed
+        code = """
+            %s = shl i$N 1, $(N-1)
+            %r = zext i$N %s to i$S
+            ret i$S %r
+            """
+    else
+        code = "ret i$S 0"
+    end
     quote
         Base.llvmcall($code, T, Tuple{})
     end
@@ -475,21 +479,6 @@ end
 end
 
 
-# arith shift right
-@generated function ashr_int(x::T, y::T) where {N, T<:BitSized{N}}
-    S = 8sizeof(T)
-    code = """
-       %x = trunc i$S %0 to i$N
-       %y = trunc i$S %1 to i$N
-       %v = call i$N @llvm.umin.i$N(i$N %y, i$N $(N-1))
-       %r = ashr i$N %x, %v
-       %ret = zext i$N %r to i$S
-       ret i$S %ret
-    """
-    quote
-        Base.llvmcall($code, T, Tuple{T,T}, x, y)
-    end
-end
 
 @generated function flipsign_int(x::T, y::T) where {N, T<:BitSized{N}}
     S = 8sizeof(T)
@@ -506,6 +495,30 @@ end
         Base.llvmcall($code, T, Tuple{T,T}, x, y)
     end
 end
+
+# arith shift right
+@generated function ashr_int(x::T, y::ST) where {N, T<:BitSized{N}, ST}
+    S = 8sizeof(T)
+    SS = 8sizeof(ST)
+    NS = bitsizeof(ST)
+    prepshift = 
+        NS == N ? "%y = or i$SN %1, 0" :
+        NS == SS ? NS < N ? "%y = zext i$SS %1 to i$N" : "%y = trunc i$SS %1 to i$N" :
+        "%y.trunc = trunc i$SS %1 to i$NS\n" *
+          (NS < N ? "%y = zext i$NS %y.trunc to i$N" : "%y = trunc i$NS %y.trunc to i$N")
+    code = """
+       %x = trunc i$S %0 to i$N
+       $prepshift
+       %v = call i$N @llvm.umin.i$N(i$N %y, i$N $(N-1))
+       %r = ashr i$N %x, %v
+       %ret = zext i$N %r to i$S
+       ret i$S %ret
+    """
+    quote
+        Base.llvmcall($code, T, Tuple{T,ST}, x, y)
+    end
+end
+
 
 @generated function lshr_int(x::T, y::T) where {N, T<:BitSized{N}}
     S = 8sizeof(T)

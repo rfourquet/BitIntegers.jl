@@ -13,6 +13,7 @@ using BitIntegers, Test
 @define_integers 24 I24 U24 # to test mixed operations with Int24
 @define_integers 200
 @define_integers 8  MyInt8 MyUInt8
+@define_integers 25
 
 # only for specific tests:
 @define_integers 32 I32 U32
@@ -43,10 +44,10 @@ end
 
 end # module TestBitIntegers ##################################################
 
-using .TestBitIntegers: Int24, UInt24, I24, U24, MyInt8, MyUInt8, I32, U32, I64, U64
+using .TestBitIntegers: Int24, UInt24, I24, U24, MyInt8, MyUInt8, I32, U32, I64, U64, Int25, UInt25
 
 const BInts = Base.BitInteger_types
-const XInts = (BitIntegers.BitInteger_types..., TestBitIntegers.UInt24, TestBitIntegers.Int24)
+const XInts = (BitIntegers.BitInteger_types..., TestBitIntegers.UInt24, TestBitIntegers.Int24, Int25, UInt25)
 const Ints = (BInts..., XInts...)
 
 # we don't include most Base-only type combinations:

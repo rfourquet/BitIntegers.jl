@@ -12,6 +12,8 @@ include("bitsized/bitsized.jl")
 
 using .BitSizedIntegers: BitSizedIntegers as BSI, bitsizeof
 
+export bitsizeof
+
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
              bitstring, bswap, checked_abs, count_ones, div, flipsign, hash, isodd, iseven,
              leading_zeros,

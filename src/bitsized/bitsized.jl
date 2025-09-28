@@ -46,4 +46,26 @@ function check_top_bit(::Type{To}, x::xT) where {To, xT}
     x
 end
 
+function Base.hex(x::BitSized, pad::Int, neg::Bool)
+    m = cld(bitsizeof(x) - leading_zeros(x), 4)
+    n = neg + max(pad, m)
+    a = Base.StringMemory(n)
+    i = n
+    while i >= 2
+        b = (x % UInt8)::UInt8
+        d1, d2 = b >> 0x4, b & 0xf
+        @inbounds a[i-1] = d1 + ifelse(d1 > 0x9, 0x57, 0x30)
+        @inbounds a[i]   = d2 + ifelse(d2 > 0x9, 0x57, 0x30)
+        x >>= 0x8
+        i -= 2
+    end
+    if i > neg
+        d = (x % UInt8)::UInt8 & 0xf
+        @inbounds a[i] = d + ifelse(d > 0x9, 0x57, 0x30)
+    end
+    neg && (@inbounds a[1] = 0x2d) # UInt8('-')
+    Base.unsafe_takestring(a)
+end
+
+
 end # module BitSizedIntegers
