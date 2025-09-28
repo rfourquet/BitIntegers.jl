@@ -40,7 +40,6 @@ using Random: AbstractRNG, Repetition, SamplerType, LessThan, Masked
 export @define_integers
 
 if VERSION >= v"1.4.0-DEV.114"
-#    check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(T, x)
     check_top_bit(::Type{T}, x) where {T} = BSI.check_top_bit(T, x)
 else
     check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(x)
@@ -74,6 +73,7 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
 
     sistr = Symbol(lowercase(string(SI)), :_str)
     uistr = Symbol(lowercase(string(UI)), :_str)
+    # `esc` is necessary only on versions < 1.1
     if n % 8 == 0
         primitive_def = quote
             primitive type $(esc(SI)) <: AbstractBitSigned   $n end
@@ -87,7 +87,6 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
         end
     end
     quote
-        # `esc` is necessary only on versions < 1.1
         $primitive_def
         Base.Signed(x::$(esc(UI)))   = $(esc(SI))(x)
         Base.Unsigned(x::$(esc(SI))) = $(esc(UI))(x)
