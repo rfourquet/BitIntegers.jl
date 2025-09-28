@@ -345,14 +345,15 @@ end
 
 
 @testset "ndigits0z" begin
-    base = rand([-100:-2; 2:200])
-    for X in XInts
-        x = rand(X)
-        if X <: Unsigned && base < 0
-            x >>= 1 # ndigits0znb not implemented in this case
+    for base in [-100:-2; 2:200]
+        for X in XInts
+            x = rand(X)
+            if X <: Unsigned && base < 0
+                x >>= 1 # ndigits0znb not implemented in this case
+            end
+            n = big(x)
+            @test Base.ndigits0z(x, base) == Base.ndigits0z(n, base)
         end
-        n = big(x)
-        @test Base.ndigits0z(x, base) == Base.ndigits0z(n, base)
     end
 end
 

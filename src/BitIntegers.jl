@@ -533,8 +533,8 @@ function ndigits0zpb(x::XBU, b::Int)
     x == 0 && return 0
     b < 0   && return ndigits0znb(signed(x), b)
     b == 2  && return bitsizeof(x) - leading_zeros(x)
-    b == 8  && return (bitsizeof(x) - leading_zeros(x) + 2) ÷ 3
-    b == 16 && return sizeof(x)<<1 - leading_zeros(x)>>2
+    b == 8  && return cld(bitsizeof(x) - leading_zeros(x), 3)
+    b == 16 && return cld(bitsizeof(x) - leading_zeros(x), 4)
     # b == 10 && return ndigits0z(x) # TODO: implement ndigits0z(x)
 
     d = 0
