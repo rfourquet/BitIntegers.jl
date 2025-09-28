@@ -49,7 +49,7 @@ end
 function Base.hex(x::BitSized, pad::Int, neg::Bool)
     m = cld(bitsizeof(x) - leading_zeros(x), 4)
     n = neg + max(pad, m)
-    a = Base.StringMemory(n)
+    a = VERSION < v"1.11" ? Base.StringVector(n) : Base.StringMemory(n)
     i = n
     while i >= 2
         b = (x % UInt8)::UInt8
@@ -64,7 +64,11 @@ function Base.hex(x::BitSized, pad::Int, neg::Bool)
         @inbounds a[i] = d + ifelse(d > 0x9, 0x57, 0x30)
     end
     neg && (@inbounds a[1] = 0x2d) # UInt8('-')
-    Base.unsafe_takestring(a)
+    if VERSION < v"1.12"
+        String(a)
+    else
+        Base.unsafe_takestring(a)
+    end
 end
 
 

@@ -156,7 +156,7 @@ for F in (:ctlz, :ctpop, :cttz)
             F = $(QuoteNode(F))
             sfun = string($ifun)
             code = ("""
-            declare i$N @llvm.ctlz.i$N(i$N)
+            declare i$N @llvm.$F.i$N(i$N)
             define i$S @$sfun(i$S %0) {
             %x = trunc i$S %0 to i$N
             %ct = call i$N @llvm.$F.i$N(i$N %x)
@@ -181,18 +181,21 @@ for F in (:sadd, :smul, :ssub, :uadd, :umul, :usub)
             F = $(QuoteNode(F))
             # Tuple{Int8, Bool} is taken by llvmcall to be [2 x i8], not {i8, i8}
             rettype = S == 8 ? "[2 x i8]" : "{i$S, i8}"
-            code = """
-            %3 = trunc i$S %0 to i$N
-            %4 = trunc i$S %1 to i$N
-            %5 = call {i$N, i1} @llvm.$F.with.overflow.i$N(i$N %3, i$N %4)
-            %6 = extractvalue { i$N, i1} %5, 0
-            %7 = extractvalue { i$N, i1} %5, 1
-            %flag = zext i1 %7 to i8
-            %z = zext i$N %6 to i$S
-            %9 = insertvalue $rettype zeroinitializer, i$S %z, 0
-            %10 = insertvalue $rettype %9, i8 %flag, 1
-            ret $rettype %10
-            """
+            code = ("""
+            declare {i$N, i1} @llvm.$F.with.overflow.i$N(i$N, i$N)
+            define $rettype @entry(i$S, i$S) {
+            %x = trunc i$S %0 to i$N
+            %y = trunc i$S %1 to i$N
+            %x.y = call {i$N, i1} @llvm.$F.with.overflow.i$N(i$N %x, i$N %y)
+            %v1 = extractvalue { i$N, i1} %x.y, 0
+            %v2 = extractvalue { i$N, i1} %x.y, 1
+            %flag = zext i1 %v2 to i8
+            %z = zext i$N %v1 to i$S
+            %r1 = insertvalue $rettype zeroinitializer, i$S %z, 0
+            %ret = insertvalue $rettype %r1, i8 %flag, 1
+            ret $rettype %ret
+            }
+            """, "entry")
             quote
                 Base.llvmcall($code, Tuple{T, Bool}, Tuple{T,T}, x, y)
             end
@@ -208,9 +211,15 @@ end
     M = @__MODULE__
     llvmname = string(M, ".check_sdiv_int", S)
     io = IOBuffer()
+    if VERSION < v"1.11"
+        ptr = "i64"
+        lptr = "i64*"
+    else
+        ptr = lptr = "ptr"
+    end
     code = ("""
-    declare void @ijl_throw(ptr)
-    declare ptr @jl_diverror_exception()
+    declare void @ijl_throw($ptr)
+    @jl_diverror_exception = external global $ptr
     define i$S @$llvmname(i$S %x, i$S %y) {
       %num = trunc i$S %x to i$N
       %denom = trunc i$S %y to i$N
@@ -222,8 +231,8 @@ end
       %valid = and i1 %4, %3
       br i1 %valid, label %pass, label %fail
     fail:
-      %exc = load ptr, ptr @jl_diverror_exception, align 8
-      call void @ijl_throw(ptr nonnull %exc)
+      %exc = load $ptr, $lptr @jl_diverror_exception, align 8
+      call void @ijl_throw($ptr %exc)
       unreachable
     pass:
       %q = sdiv i$N %num, %denom
@@ -242,9 +251,16 @@ end
 @generated function checked_srem_int(x::T, y::T) where {N, T<:BitSized{N}}
     S = 8sizeof(T)
     llvmname = string(@__MODULE__, ".checked_srem_int", S)
+    if VERSION < v"1.11"
+        ptr = "i64"
+        lptr = "i64*"
+    else
+        ptr = lptr = "ptr"
+    end
+
     code = ("""
-         declare void @ijl_throw(ptr)
-         declare ptr @jl_diverror_exception()
+         declare void @ijl_throw($ptr)
+         @jl_diverror_exception = external global $ptr
          define i$S @$llvmname(i$S %x, i$S %y) {
           top:
             %num = trunc i$S %x to i$N
@@ -254,8 +270,8 @@ end
               i$N -1, label %after_srem
             ]
           fail:
-            %exc = load ptr, ptr @jl_diverror_exception, align 8
-            call void @ijl_throw(ptr nonnull %exc)
+            %exc = load $ptr, $lptr @jl_diverror_exception, align 8
+            call void @ijl_throw($ptr %exc)
             unreachable
           oksrem:
             %rem = srem i$N %num, %denom
@@ -276,19 +292,25 @@ for F in (:udiv, :urem)
     ex = quote
         @generated function $fname(x::T, y::T) where {N, T<:BitSized{N}}
             S = 8sizeof(T)
-            llvmname = string(@__MODULE__, ".",$fname, S)
+            llvmname = string(@__MODULE__, ".", $fname, S)
+            if VERSION < v"1.11"
+                ptr = "i64"
+                lptr = "i64*"
+            else
+                ptr = lptr = "ptr"
+            end
             op = $(QuoteNode(F))
             definecode = ("""
-              declare void @ijl_throw(ptr)
-              declare ptr @jl_diverror_exception()
+              declare void @ijl_throw($ptr)
+              @jl_diverror_exception = external global $ptr
               define i$S @$llvmname(i$S %x, i$S %y) {
                 %num = trunc i$S %x to i$N
                 %denom = trunc i$S %y to i$N
                 %divby0 = icmp eq i$N %denom, 0
                 br i1 %divby0, label %fail, label %pass
                fail:
-                %exc = load ptr, ptr @jl_diverror_exception, align 8
-                call void @ijl_throw(ptr nonnull %exc)
+                %exc = load $ptr, $lptr @jl_diverror_exception, align 8
+                call void @ijl_throw($ptr %exc)
                 unreachable
                pass:
                 %result = $op i$N %num, %denom
@@ -497,7 +519,7 @@ end
 end
 
 # arith shift right
-@generated function ashr_int(x::T, y::ST) where {N, T<:BitSized{N}, ST}
+@inline @generated function ashr_int(x::T, y::ST) where {N, T<:BitSized{N}, ST}
     S = 8sizeof(T)
     SS = 8sizeof(ST)
     NS = bitsizeof(ST)
@@ -506,14 +528,17 @@ end
         NS == SS ? NS < N ? "%y = zext i$SS %1 to i$N" : "%y = trunc i$SS %1 to i$N" :
         "%y.trunc = trunc i$SS %1 to i$NS\n" *
           (NS < N ? "%y = zext i$NS %y.trunc to i$N" : "%y = trunc i$NS %y.trunc to i$N")
-    code = """
+    code = ("""
+       declare i$N @llvm.umin.i$N(i$N, i$N)
+       define i$S @entry(i$S, i$SS) {
        %x = trunc i$S %0 to i$N
        $prepshift
        %v = call i$N @llvm.umin.i$N(i$N %y, i$N $(N-1))
        %r = ashr i$N %x, %v
        %ret = zext i$N %r to i$S
        ret i$S %ret
-    """
+       }
+    """, "entry")
     quote
         Base.llvmcall($code, T, Tuple{T,ST}, x, y)
     end
