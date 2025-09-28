@@ -449,7 +449,7 @@ end
 
 @testset "checked operations" begin
     for X in XInts
-        if sizeof(X) != 3 # bug with [U]Int24, cf. Julia issue #34288
+        if bitsizeof(X) != 24 # bug with [U]Int24, cf. Julia issue #34288
             @test Base.sub_with_overflow(typemin(X)+X(3), X(3)) == (typemin(X), false)
             @test Base.sub_with_overflow(typemin(X)+X(2), X(3)) == (typemax(X), true)
             @test Base.add_with_overflow(typemax(X)-X(3), X(3)) == (typemax(X), false)
