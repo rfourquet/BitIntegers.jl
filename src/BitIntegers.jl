@@ -22,17 +22,25 @@ import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_o
 
 using Base: GenericIOBuffer, uinttype
 
-using .BSI.Intrinsics: add_int, and_int, ashr_int, bswap_int, checked_sadd_int,
-            checked_sdiv_int, checked_smul_int, checked_srem_int, checked_ssub_int,
-            checked_uadd_int, checked_udiv_int, checked_umul_int, checked_urem_int,
-            checked_usub_int, ctlz_int, ctpop_int, cttz_int, flipsign_int, lshr_int, mul_int,
-            ndigits0z, ndigits0znb, neg_int, not_int, or_int, shl_int, sitofp, sle_int,
-            slt_int, sub_int, uitofp, ule_int, ult_int, xor_int
-
-using Base.GMP: ispos, Limb
-
-using .BSI.Intrinsics: bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
+using .BSI.Intrinsics: add_int, and_int, ashr_int, bswap_int,
+            checked_sadd_int, checked_sdiv_int, checked_smul_int,
+            checked_srem_int, checked_ssub_int, checked_uadd_int,
+            checked_udiv_int, checked_umul_int, checked_urem_int,
+            checked_usub_int, ctlz_int, ctpop_int, cttz_int,
+            flipsign_int, lshr_int, mul_int, ndigits0z, ndigits0znb,
+            neg_int, not_int, or_int, shl_int, sitofp, sle_int,
+            slt_int, sub_int, uitofp, ule_int, ult_int, xor_int,
+            bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
+
+using Base.GMP: Limb
+
+if isdefined(Base, :ispositive)
+    const ispos = Base.ispositive
+else
+    using Base.GMP: ispos
+end
+
 
 import Random: rand, Sampler
 using Random: AbstractRNG, Repetition, SamplerType, LessThan, Masked
