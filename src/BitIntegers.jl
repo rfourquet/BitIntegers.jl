@@ -312,14 +312,15 @@ function rem(x::BigInt, ::Type{T}) where T<:XBI
 end
 
 
-function _bitsinuse(x::BigInt)
+function _hasroom(::Type{T}, x::BigInt) where {T<:XBI}
     bits = abs(x.size) * bitsizeof(Limb)
+    room = bitsizeof(T)
     for i in x.size:-1:1
         l = unsafe_load(x.d, i)
         bits -= leading_zeros(l)
-        l ≠ zero(Limb) && break
+        (l ≠ zero(Limb) || bits ≤ room)  && break
     end
-    return bits
+    return bits ≤ room
 end
 
 
@@ -328,7 +329,7 @@ function (::Type{T})(x::BigInt) where T<:XBU
         convert(T, convert(Limb,x))
     else
         if bitsizeof(T) % 8 ≠ 0
-            _bitsinuse(x) ≤ bitsizeof(T) || throw(InexactError(Symbol(string(T)), T, x))
+            _hasroom(T, x) || throw(InexactError(Symbol(string(T)), T, x))
         else
             0 <= x.size <= cld(sizeof(T),sizeof(Limb)) || throw(InexactError(Symbol(string(T)), T, x))
         end
@@ -343,7 +344,7 @@ function (::Type{T})(x::BigInt) where T<:XBS
         convert(T, convert(SLimb, x))
     else
         if bitsizeof(T) % 8 ≠ 0
-            _bitsinuse(x) ≤ bitsizeof(T) || throw(InexactError(Symbol(string(T)), T, x))
+            _hasroom(T, x) || throw(InexactError(Symbol(string(T)), T, x))
         else
             0 <= n <= cld(sizeof(T),sizeof(Limb)) || throw(InexactError(Symbol(string(T)), T, x))
         end
