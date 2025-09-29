@@ -7,18 +7,6 @@ But for some of them we can use the ones from core. Those
 that don't care about the unused bits.
 =#
 
-const intrinsics = (:add_int, :and_int, :ashr_int, :bswap_int,
-                    :checked_sadd_int, :checked_sdiv_int,
-                    :checked_smul_int, :checked_srem_int,
-                    :checked_ssub_int, :checked_uadd_int,
-                    :checked_udiv_int, :checked_umul_int,
-                    :checked_urem_int, :checked_usub_int, :ctlz_int,
-                    :ctpop_int, :cttz_int, :flipsign_int, :lshr_int,
-                    :mul_int, :ndigits0z, :ndigits0znb, :neg_int,
-                    :not_int, :or_int, :shl_int, :sitofp, :sle_int,
-                    :slt_int, :sub_int, :uitofp, :ule_int,
-                    :ult_int, :xor_int)
-
 onearg = (:ctlz_int, :ctpop_int, :cttz_int, :neg_int, :not_int, :bswap_int)
 
 twoarg = (:add_int, :and_int, :ashr_int, :checked_sadd_int,
@@ -31,10 +19,7 @@ twoarg = (:add_int, :and_int, :ashr_int, :checked_sadd_int,
            :checked_trunc_sint, :checked_trunc_uint,
            :bitcast, :sext_int, :trunc_int, :zext_int)
 
-#=
-bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
-            trunc_int, zext_int
-=#
+
 for F in twoarg
     @eval $F(x,y) = Core.Intrinsics.$F(x,y)
 end
@@ -43,10 +28,6 @@ for F in onearg
     @eval $F(x) = Core.Intrinsics.$F(x)
 end
 
-
-for F in (onearg..., twoarg...)
-    @eval $F(x::BitSized...) = error("Unimplemented intrinsic ", $F)
-end
 
 function checked_trunc_sint(::Type{To}, x::From) where {To,From}
     @inline
@@ -109,11 +90,11 @@ for F in (:add, :and, :mul, :or, :sub, :xor)
             S = 8sizeof(T)
             F = $(QuoteNode(F))
             code =     """
-            %3 = trunc i$S %0 to i$N
-            %4 = trunc i$S %1 to i$N
-            %5 = $F i$N %3, %4
-            %6 = zext i$N %5 to i$S
-            ret i$S %6
+            %x = trunc i$S %0 to i$N
+            %y = trunc i$S %1 to i$N
+            %r = $F i$N %x, %y
+            %ret = zext i$N %r to i$S
+            ret i$S %ret
             """
 
             quote
@@ -132,11 +113,11 @@ for F in (:sle, :slt, :ule, :ult)
             S = 8sizeof(T)
             F = $(QuoteNode(F))
             code = """
-            %3 = trunc i$S %0 to i$N
-            %4 = trunc i$S %1 to i$N
-            %5 = icmp $F i$N %3, %4
-            %6 = zext i1 %5 to i8
-            ret i8 %6
+            %x = trunc i$S %0 to i$N
+            %y = trunc i$S %1 to i$N
+            %r = icmp $F i$N %x, %y
+            %ret = zext i1 %r to i8
+            ret i8 %ret
             """
             quote
                 Base.llvmcall($code, Bool, Tuple{T,T}, x, y)
@@ -212,8 +193,8 @@ end
     llvmname = string(M, ".check_sdiv_int", S)
     io = IOBuffer()
     if VERSION < v"1.11"
-        ptr = "i64"
-        lptr = "i64*"
+        ptr = "i$(Sys.WORD_SIZE)"
+        lptr = "i$(Sys.WORD_SIZE)*"
     else
         ptr = lptr = "ptr"
     end
@@ -252,8 +233,8 @@ end
     S = 8sizeof(T)
     llvmname = string(@__MODULE__, ".checked_srem_int", S)
     if VERSION < v"1.11"
-        ptr = "i64"
-        lptr = "i64*"
+        ptr = "i$(Sys.WORD_SIZE)"
+        lptr = "i$(Sys.WORD_SIZE)*"
     else
         ptr = lptr = "ptr"
     end
@@ -294,8 +275,8 @@ for F in (:udiv, :urem)
             S = 8sizeof(T)
             llvmname = string(@__MODULE__, ".", $fname, S)
             if VERSION < v"1.11"
-                ptr = "i64"
-                lptr = "i64*"
+                ptr = "i$(Sys.WORD_SIZE)"
+                lptr = "i$(Sys.WORD_SIZE)*"
             else
                 ptr = lptr = "ptr"
             end
@@ -327,20 +308,6 @@ for F in (:udiv, :urem)
 end
 
 
-# what's left
-#=
-( :ndigits0z, :ndigits0znb)
-
-
-bitcast, sext_int,
-            trunc_int, zext_int
-
-    %2 = shl i$N 1, $(N-1)
-    %3 = $ext i$N %2 to i$S
-    ret i$S %3
-
-=#
-
 function trunc_int(::Type{RT}, x::T) where {RT, T}
     RT <: BitSized || T <: BitSized || return Core.Intrinsics.trunc_int(RT, x)
     _trunc_int(RT, x)
@@ -350,7 +317,7 @@ end
     RN = bitsizeof(RT)
     N = bitsizeof(T)
     N == RN && return :(Core.Intrinsics.trunc_int(RT, x))
-    N < RN && error("SExt: output bitsize must be > input bitsize")
+    N < RN && error("Trunc: output bitsize must be < input bitsize")
     (N % 8) == (RN % 8) == 0 && return :(Core.Intrinsics.trunc_int(RT, x))
     S = 8sizeof(T)
     RS = 8sizeof(RT)
@@ -416,9 +383,19 @@ end
 end
 
 
-
-bitcast(::Type{RT}, x::T) where {RT, N, T<:BitSized{N}} = reinterpret(RT, x)
-
+@generated function bitcast(::Type{To}, x::T) where {To, N, T<:BitSized{N}}
+    isbitstype(To) || error("bitcast: target type must be bits type")
+    bitsizeof(To) == bitsizeof(T) || error("bitcast: argument size does not match size of target type")
+    S = 8sizeof(T)
+    code = """
+    %x = trunc i$S %0 to i$N
+    %r = zext i$N %x to i$S
+    ret i$S %r
+    """
+    quote
+        Base.llvmcall($code, To, Tuple{T}, x)
+    end
+end
 
 
 for F in (:sitofp, :uitofp)
@@ -428,7 +405,8 @@ for F in (:sitofp, :uitofp)
             op = $(QuoteNode(F))
             ft = FT<:Float16 ? "half" :
                 FT <: Float32 ? "float" :
-                "double"
+                FT <: Float64 ? "double" :
+                error("Floating type $FT not supported")
 
             code = """
             %x = trunc i$S %0 to i$N
@@ -463,10 +441,8 @@ end
     code = """
        %x = trunc i$S %0 to i$N
        %y = trunc i$S %1 to i$N
-       %3 = shl i$N %x, %y
-;       %4 = icmp ugt i$N %y, $(N-1)
-;       %r = select i1 %4, i$N 0, i$N %3
-       %ret = zext i$N %3 to i$S
+       %r = shl i$N %x, %y
+       %ret = zext i$N %r to i$S
        ret i$S %ret
     """
     quote
@@ -508,8 +484,8 @@ end
        %x = trunc i$S %0 to i$N
        %y = trunc i$S %1 to i$N
        %v = ashr i$N %y, $(N-1)
-       %3 = add i$N %v, %x
-       %r = xor i$N %3, %v
+       %s = add i$N %v, %x
+       %r = xor i$N %s, %v
        %ret = zext i$N %r to i$S
        ret i$S %ret
     """
