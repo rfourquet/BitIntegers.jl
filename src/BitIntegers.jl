@@ -311,11 +311,27 @@ function rem(x::BigInt, ::Type{T}) where T<:XBI
     end
 end
 
+
+function _bitsinuse(x::BigInt)
+    bits = abs(x.size) * bitsizeof(Limb)
+    for i in x.size:-1:1
+        l = unsafe_load(x.d, i)
+        bits -= leading_zeros(l)
+        l ≠ zero(Limb) && break
+    end
+    return bits
+end
+
+
 function (::Type{T})(x::BigInt) where T<:XBU
     if sizeof(T) < sizeof(Limb)
         convert(T, convert(Limb,x))
     else
-        0 <= x.size <= cld(sizeof(T),sizeof(Limb)) || throw(InexactError(Symbol(string(T)), T, x))
+        if bitsizeof(T) % 8 ≠ 0
+            _bitsinuse(x) ≤ bitsizeof(T) || throw(InexactError(Symbol(string(T)), T, x))
+        else
+            0 <= x.size <= cld(sizeof(T),sizeof(Limb)) || throw(InexactError(Symbol(string(T)), T, x))
+        end
         x % T
     end
 end
@@ -326,7 +342,11 @@ function (::Type{T})(x::BigInt) where T<:XBS
         SLimb = typeof(Signed(one(Limb)))
         convert(T, convert(SLimb, x))
     else
-        0 <= n <= cld(sizeof(T),sizeof(Limb)) || throw(InexactError(Symbol(string(T)), T, x))
+        if bitsizeof(T) % 8 ≠ 0
+            _bitsinuse(x) ≤ bitsizeof(T) || throw(InexactError(Symbol(string(T)), T, x))
+        else
+            0 <= n <= cld(sizeof(T),sizeof(Limb)) || throw(InexactError(Symbol(string(T)), T, x))
+        end
         y = x % T
         ispos(x) ⊻ (y > 0) && throw(InexactError(Symbol(string(T)), T, x)) # catch overflow
         y

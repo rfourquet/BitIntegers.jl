@@ -7,9 +7,9 @@ But for some of them we can use the ones from core. Those
 that don't care about the unused bits.
 =#
 
-onearg = (:ctlz_int, :ctpop_int, :cttz_int, :neg_int, :not_int, :bswap_int)
+const onearg = (:ctlz_int, :ctpop_int, :cttz_int, :neg_int, :not_int, :bswap_int)
 
-twoarg = (:add_int, :and_int, :ashr_int, :checked_sadd_int,
+const twoarg = (:add_int, :and_int, :ashr_int, :checked_sadd_int,
            :checked_sdiv_int, :checked_smul_int, :checked_srem_int,
            :checked_ssub_int, :checked_uadd_int, :checked_udiv_int,
            :checked_umul_int, :checked_urem_int, :checked_usub_int,
