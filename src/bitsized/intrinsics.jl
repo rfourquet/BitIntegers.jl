@@ -4,7 +4,7 @@ import ..BitSized, ..bitsizeof
 #=
 We need to make intrinsics aware of bit sized integers.
 But for some of them we can use the ones from core. Those
-that don't care about the unused bits. 
+that don't care about the unused bits.
 =#
 
 const intrinsics = (:add_int, :and_int, :ashr_int, :bswap_int,
@@ -157,7 +157,7 @@ for F in (:ctlz, :ctpop, :cttz)
             sfun = string($ifun)
             code = ("""
             declare i$N @llvm.$F.i$N(i$N)
-            define i$S @$sfun(i$S %0) {
+            define i$S @$sfun(i$S %0) alwaysinline {
             %x = trunc i$S %0 to i$N
             %ct = call i$N @llvm.$F.i$N(i$N %x)
             %ret = zext i$N %ct to i$S
@@ -183,7 +183,7 @@ for F in (:sadd, :smul, :ssub, :uadd, :umul, :usub)
             rettype = S == 8 ? "[2 x i8]" : "{i$S, i8}"
             code = ("""
             declare {i$N, i1} @llvm.$F.with.overflow.i$N(i$N, i$N)
-            define $rettype @entry(i$S, i$S) {
+            define $rettype @entry(i$S, i$S) alwaysinline {
             %x = trunc i$S %0 to i$N
             %y = trunc i$S %1 to i$N
             %x.y = call {i$N, i1} @llvm.$F.with.overflow.i$N(i$N %x, i$N %y)
@@ -220,7 +220,7 @@ end
     code = ("""
     declare void @ijl_throw($ptr)
     @jl_diverror_exception = external global $ptr
-    define i$S @$llvmname(i$S %x, i$S %y) {
+    define i$S @$llvmname(i$S %x, i$S %y) alwaysinline {
       %num = trunc i$S %x to i$N
       %denom = trunc i$S %y to i$N
       %tmin = shl i$N 1, $(N-1)
@@ -261,7 +261,7 @@ end
     code = ("""
          declare void @ijl_throw($ptr)
          @jl_diverror_exception = external global $ptr
-         define i$S @$llvmname(i$S %x, i$S %y) {
+         define i$S @$llvmname(i$S %x, i$S %y) alwaysinline {
           top:
             %num = trunc i$S %x to i$N
             %denom = trunc i$S %y to i$N
@@ -303,7 +303,7 @@ for F in (:udiv, :urem)
             definecode = ("""
               declare void @ijl_throw($ptr)
               @jl_diverror_exception = external global $ptr
-              define i$S @$llvmname(i$S %x, i$S %y) {
+              define i$S @$llvmname(i$S %x, i$S %y) alwaysinline {
                 %num = trunc i$S %x to i$N
                 %denom = trunc i$S %y to i$N
                 %divby0 = icmp eq i$N %denom, 0
@@ -356,7 +356,7 @@ end
     RS = 8sizeof(RT)
     prep = N == S ? "%x = or i$N %0, 0" : "%x = trunc i$S %0 to i$N"
     zext = RN == RS ? "%ret = or i$RN %r, 0" :
-        "%ret = zext i$RN %r to i$RS" 
+        "%ret = zext i$RN %r to i$RS"
     code = """
          $prep
          %r = trunc i$N %x to i$RN
@@ -523,14 +523,14 @@ end
     S = 8sizeof(T)
     SS = 8sizeof(ST)
     NS = bitsizeof(ST)
-    prepshift = 
+    prepshift =
         NS == N ? "%y = or i$SN %1, 0" :
         NS == SS ? NS < N ? "%y = zext i$SS %1 to i$N" : "%y = trunc i$SS %1 to i$N" :
         "%y.trunc = trunc i$SS %1 to i$NS\n" *
           (NS < N ? "%y = zext i$NS %y.trunc to i$N" : "%y = trunc i$NS %y.trunc to i$N")
     code = ("""
        declare i$N @llvm.umin.i$N(i$N, i$N)
-       define i$S @entry(i$S, i$SS) {
+       define i$S @entry(i$S, i$SS) alwaysinline {
        %x = trunc i$S %0 to i$N
        $prepshift
        %v = call i$N @llvm.umin.i$N(i$N %y, i$N $(N-1))
