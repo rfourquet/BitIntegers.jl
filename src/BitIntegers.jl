@@ -2,23 +2,45 @@
 
 module BitIntegers
 
+# * types definition 
+
+abstract type AbstractBitUnsigned <: Unsigned end
+abstract type AbstractBitSigned   <: Signed   end
+
+
+include("bitsized/bitsized.jl")
+
+using .BitSizedIntegers: BitSizedIntegers as BSI, bitsizeof
+
+export bitsizeof
+
 import Base: &, *, +, -, <, <<, <=, ==, >>, >>>, |, ~, AbstractFloat, add_with_overflow,
              bitstring, bswap, checked_abs, count_ones, div, flipsign, hash, isodd, iseven,
              leading_zeros,
              mod, mul_with_overflow, ndigits0zpb, peek, promote_rule, read, rem, signed,
              sub_with_overflow, trailing_zeros, typemax, typemin, signed, unsigned, write, xor
 
-using Base: GenericIOBuffer, add_int, and_int, ashr_int, bswap_int, checked_sadd_int,
-            checked_sdiv_int, checked_smul_int, checked_srem_int, checked_ssub_int,
-            checked_uadd_int, checked_udiv_int, checked_umul_int, checked_urem_int,
-            checked_usub_int, ctlz_int, ctpop_int, cttz_int, flipsign_int, lshr_int, mul_int,
-            ndigits0z, ndigits0znb, neg_int, not_int, or_int, shl_int, sitofp, sle_int,
-            slt_int, sub_int, uinttype, uitofp, ule_int, ult_int, xor_int
+using Base: GenericIOBuffer, uinttype
 
-using Base.GMP: ispos, Limb
-
-using Core: bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
+using .BSI.Intrinsics: add_int, and_int, ashr_int, bswap_int,
+            checked_sadd_int, checked_sdiv_int, checked_smul_int,
+            checked_srem_int, checked_ssub_int, checked_uadd_int,
+            checked_udiv_int, checked_umul_int, checked_urem_int,
+            checked_usub_int, ctlz_int, ctpop_int, cttz_int,
+            flipsign_int, lshr_int, mul_int, ndigits0z, ndigits0znb,
+            neg_int, not_int, or_int, shl_int, sitofp, sle_int,
+            slt_int, sub_int, uitofp, ule_int, ult_int, xor_int,
+            bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
+
+using Base.GMP: Limb
+
+if isdefined(Base, :ispositive)
+    const ispos = Base.ispositive
+else
+    using Base.GMP: ispos
+end
+
 
 import Random: rand, Sampler
 using Random: AbstractRNG, Repetition, SamplerType, LessThan, Masked
@@ -26,7 +48,7 @@ using Random: AbstractRNG, Repetition, SamplerType, LessThan, Masked
 export @define_integers
 
 if VERSION >= v"1.4.0-DEV.114"
-    check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(T, x)
+    check_top_bit(::Type{T}, x) where {T} = BSI.check_top_bit(T, x)
 else
     check_top_bit(::Type{T}, x) where {T} = Core.check_top_bit(x)
 end
@@ -38,12 +60,6 @@ end
 if VERSION >= v"1.5"
     import Base: bitrotate
 end
-
-
-# * types definition & aliases
-
-abstract type AbstractBitUnsigned <: Unsigned end
-abstract type AbstractBitSigned   <: Signed   end
 
 
 # ** @define_integers
@@ -65,12 +81,21 @@ macro define_integers(n::Int, SI=nothing, UI=nothing)
 
     sistr = Symbol(lowercase(string(SI)), :_str)
     uistr = Symbol(lowercase(string(UI)), :_str)
-
+    # `esc` is necessary only on versions < 1.1
+    if n % 8 == 0
+        primitive_def = quote
+            primitive type $(esc(SI)) <: AbstractBitSigned   $n end
+            primitive type $(esc(UI)) <: AbstractBitUnsigned $n end
+        end
+    else
+        bytes = 8cld(n, 8)
+        primitive_def = quote
+            primitive type $(esc(SI)) <: BSI.SignedBitSized{$n}   $bytes end
+            primitive type $(esc(UI)) <: BSI.UnsignedBitSized{$n} $bytes end
+        end
+    end
     quote
-        # `esc` is necessary only on versions < 1.1
-        primitive type $(esc(SI)) <: AbstractBitSigned   $n end
-        primitive type $(esc(UI)) <: AbstractBitUnsigned $n end
-
+        $primitive_def
         Base.Signed(x::$(esc(UI)))   = $(esc(SI))(x)
         Base.Unsigned(x::$(esc(SI))) = $(esc(UI))(x)
         Base.uinttype(::Type{$(esc(SI))}) = $(esc(UI))
@@ -161,7 +186,7 @@ const UBI = Union{BBI,XBI}
 typemin(::Type{T}) where {T<:XBU} = convert(T, 0)
 typemax(::Type{T}) where {T<:XBU} = ~convert(T, 0)
 
-typemin(::Type{T}) where {T<:XBS} = convert(T, 1) << (sizeof(T)*8-1)
+typemin(::Type{T}) where {T<:XBS} = convert(T, 1) << (bitsizeof(T)-1)
 typemax(::Type{T}) where {T<:XBS} = bitcast(T, typemax(uinttype(T)) >> 1)
 
 
@@ -190,17 +215,17 @@ end
     x === Bool && return :(and_int(zext_int(T, x), T(1)))
     if T <: Unsigned
         if x <: Signed
-            if sizeof(x) < sizeof(T)
+            if bitsizeof(x) < bitsizeof(T)
                 :(sext_int(T, check_top_bit(T, x)))
-            elseif sizeof(x) == sizeof(T)
+            elseif bitsizeof(x) == bitsizeof(T)
                 :(bitcast(T, check_top_bit(T, x)))
             else
                 :(checked_trunc_uint(T, x))
             end
         else # x <: Unsigned
-            if sizeof(x) < sizeof(T)
+            if bitsizeof(x) < bitsizeof(T)
                 :(zext_int(T, x))
-            elseif sizeof(x) == sizeof(T)
+            elseif bitsizeof(x) == bitsizeof(T)
                 x === T ?
                     :x  :
                     :(reinterpret(T, x))
@@ -210,9 +235,9 @@ end
         end
     else # T <: Signed
         if x <: Signed
-            if sizeof(x) < sizeof(T)
+            if bitsizeof(x) < bitsizeof(T)
                 :(sext_int(T, x))
-            elseif sizeof(x) == sizeof(T)
+            elseif bitsizeof(x) == bitsizeof(T)
                 x === T ?
                     :x  :
                     :(reinterpret(T, x))
@@ -220,9 +245,9 @@ end
                 :(checked_trunc_sint(T, x))
             end
         else # x <: Unsigned
-            if sizeof(x) < sizeof(T)
+            if bitsizeof(x) < bitsizeof(T)
                 :(zext_int(T, x))
-            elseif sizeof(x) == sizeof(T)
+            elseif bitsizeof(x) == bitsizeof(T)
                 :(bitcast(T, check_top_bit(T, x)))
             else
                 :(checked_trunc_sint(T, check_top_bit(T, x)))
@@ -234,11 +259,11 @@ end
 @generated function _rem(x::Union{UBI,Bool}, ::Type{to}) where {to<:UBI}
     from = x
     to === from && return :x # this replaces Base's method for BBI
-    if sizeof(to) < sizeof(from)
+    if bitsizeof(to) < bitsizeof(from)
         :(trunc_int(to, x))
     elseif from === Bool
         :(convert(to, x))
-    elseif sizeof(from) < sizeof(to)
+    elseif bitsizeof(from) < bitsizeof(to)
         if from <: Signed
             :(sext_int(to, x))
         else
@@ -257,9 +282,9 @@ rem(x::XBI, ::Type{to}) where {to<:XBI} = _rem(x, to)
 rem(x::T, ::Type{T}) where {T<:XBI} = x
 
 @generated function promote_rule(::Type{X}, ::Type{Y}) where {X<:XBI,Y<:UBI}
-    if sizeof(X) > sizeof(Y)
+    if bitsizeof(X) > bitsizeof(Y)
         X
-    elseif sizeof(X) == sizeof(Y)
+    elseif bitsizeof(X) == bitsizeof(Y)
         if X <: Unsigned && Y <: Signed
             X
         elseif X <: Signed && Y <: Unsigned
@@ -289,11 +314,28 @@ function rem(x::BigInt, ::Type{T}) where T<:XBI
     end
 end
 
+
+function _hasroom(::Type{T}, x::BigInt) where {T<:XBI}
+    bits = abs(x.size) * bitsizeof(Limb)
+    room = bitsizeof(T)
+    for i in x.size:-1:1
+        l = unsafe_load(x.d, i)
+        bits -= leading_zeros(l)
+        (l ≠ zero(Limb) || bits ≤ room)  && break
+    end
+    return bits ≤ room
+end
+
+
 function (::Type{T})(x::BigInt) where T<:XBU
     if sizeof(T) < sizeof(Limb)
         convert(T, convert(Limb,x))
     else
-        0 <= x.size <= cld(sizeof(T),sizeof(Limb)) || throw(InexactError(Symbol(string(T)), T, x))
+        if bitsizeof(T) % 8 ≠ 0
+            _hasroom(T, x) || throw(InexactError(Symbol(string(T)), T, x))
+        else
+            0 <= x.size <= cld(sizeof(T),sizeof(Limb)) || throw(InexactError(Symbol(string(T)), T, x))
+        end
         x % T
     end
 end
@@ -304,7 +346,11 @@ function (::Type{T})(x::BigInt) where T<:XBS
         SLimb = typeof(Signed(one(Limb)))
         convert(T, convert(SLimb, x))
     else
-        0 <= n <= cld(sizeof(T),sizeof(Limb)) || throw(InexactError(Symbol(string(T)), T, x))
+        if bitsizeof(T) % 8 ≠ 0
+            _hasroom(T, x) || throw(InexactError(Symbol(string(T)), T, x))
+        else
+            0 <= n <= cld(sizeof(T),sizeof(Limb)) || throw(InexactError(Symbol(string(T)), T, x))
+        end
         y = x % T
         ispos(x) ⊻ (y > 0) && throw(InexactError(Symbol(string(T)), T, x)) # catch overflow
         y
@@ -392,7 +438,7 @@ end
 @inline >>>(x::UBI, y::Int) = 0 <= y ? x >>> unsigned(y) : x << unsigned(-y)
 
 function bitrotate(x::T, k::Integer) where {T<:XBI}
-    l = (sizeof(T) << 3) % UInt
+    l = bitsizeof(T) % UInt
     k::UInt = mod(k, l)
     (x << k) | (x >>> (l-k))
 end
@@ -432,7 +478,7 @@ isodd(a::XBI) = isodd(a % Int)
 iseven(a::XBI) = iseven(a % Int)
 
 # same definition as for Base.BitInteger; necessary e.g. for faster hashing
-top_set_bit(x::XBI) = 8sizeof(x) - leading_zeros(x)
+top_set_bit(x::XBI) = bitsizeof(x) - leading_zeros(x)
 
 
 # * arithmetic operations
@@ -510,9 +556,9 @@ function ndigits0zpb(x::XBU, b::Int)
     # precondition: b > 1
     x == 0 && return 0
     b < 0   && return ndigits0znb(signed(x), b)
-    b == 2  && return sizeof(x)<<3 - leading_zeros(x)
-    b == 8  && return (sizeof(x)<<3 - leading_zeros(x) + 2) ÷ 3
-    b == 16 && return sizeof(x)<<1 - leading_zeros(x)>>2
+    b == 2  && return bitsizeof(x) - leading_zeros(x)
+    b == 8  && return cld(bitsizeof(x) - leading_zeros(x), 3)
+    b == 16 && return cld(bitsizeof(x) - leading_zeros(x), 4)
     # b == 10 && return ndigits0z(x) # TODO: implement ndigits0z(x)
 
     d = 0
@@ -534,7 +580,7 @@ end
 ndigits0zpb(x::XBS, b::Integer) = ndigits0zpb(unsigned(abs(x)), Int(b))
 ndigits0zpb(x::XBU, b::Integer) = ndigits0zpb(x, Int(b))
 
-bitstring(x::XBI) = string(reinterpret(uinttype(typeof(x)), x), pad = 8*sizeof(x), base = 2)
+bitstring(x::XBI) = string(reinterpret(uinttype(typeof(x)), x), pad = bitsizeof(x), base = 2)
 
 
 # * read/write
@@ -573,7 +619,7 @@ end
 
 # ** scalar
 
-rand(rng::AbstractRNG, ::SamplerType{T}) where {T<:XBI} = rand(rng, NBits{T}(sizeof(T) << 3))
+rand(rng::AbstractRNG, ::SamplerType{T}) where {T<:XBI} = rand(rng, NBits{T}(bitsizeof(T)))
 
 # sampler produce a T with at least n random bits (from low to high bits)
 struct NBits{T<:XBI} <: Sampler{T}
@@ -620,7 +666,7 @@ SamplerRangeFast(r::AbstractUnitRange{T}) where T<:XBI =
 function SamplerRangeFast(r::AbstractUnitRange{T}, ::Type{U}) where {T,U}
     isempty(r) && throw(ArgumentError("range must be non-empty"))
     m = (last(r) - first(r)) % uinttype(T) % U # % uinttype(T) to not propagate sign bit
-    bw = (sizeof(U) << 3 - leading_zeros(m)) % UInt # bit-width
+    bw = (bitsizeof(U) - leading_zeros(m)) % UInt # bit-width
     mask = ((1 % U) << bw) - (1 % U)
     SamplerRangeFast{U,T}(first(r), bw, m, mask)
 end
