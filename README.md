@@ -36,7 +36,7 @@ This package is implemented using `primitive type` and julia intrinsics, the cav
 not always be legal (e.g. in some julia versions, `Primes.factor(rand(UInt256))` used to
 make LLVM abort the program, while it was fine for `Int256`).
 
-There are another couple of outstanding issues:
+There were another couple of outstanding issues in older Julia versions:
 
 1) prior to Julia version 1.11: the intrinsics for division operations used to make LLVM fail for widths
 greater than 128 bits,
@@ -54,6 +54,11 @@ https://github.com/JuliaLang/julia/pull/33283).
 
 
 ## Release notes
+
+### v0.3.6
+
+* `unsigned` and `signed` can be called on all integer types ([#2](https://github.com/rfourquet/BitIntegers.jl/pull/2))
+* fix use of `Base.GMP.ispos` (removed in Julia v1.13) ([#58](https://github.com/rfourquet/BitIntegers.jl/pull/58))
 
 ### v0.3.5
 
