@@ -15,7 +15,7 @@ using Base: GenericIOBuffer, add_int, and_int, ashr_int, bswap_int, checked_sadd
             ndigits0z, ndigits0znb, neg_int, not_int, or_int, shl_int, sitofp, sle_int,
             slt_int, sub_int, uinttype, uitofp, ule_int, ult_int, xor_int
 
-using Base.GMP: ispos, Limb
+using Base.GMP: Limb
 
 using Core: bitcast, checked_trunc_sint, checked_trunc_uint, sext_int,
             trunc_int, zext_int
@@ -37,6 +37,12 @@ end
 
 if VERSION >= v"1.5"
     import Base: bitrotate
+end
+
+if isdefined(Base.GMP, :ispos)
+    ispos(x) = Base.GMP.ispos(x)
+else
+    ispos(x) = Base.ispositive(x)
 end
 
 
