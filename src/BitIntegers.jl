@@ -482,8 +482,10 @@ add_with_overflow(x::T, y::T) where {T<:XBU} = checked_uadd_int(x, y)
 sub_with_overflow(x::T, y::T) where {T<:XBS} = checked_ssub_int(x, y)
 sub_with_overflow(x::T, y::T) where {T<:XBU} = checked_usub_int(x, y)
 
-mul_with_overflow(x::T, y::T) where {T<:XBS} = sizeof(T) >= 16 ? broken_mul_with_overflow(x, y) : checked_smul_int(x, y)
-mul_with_overflow(x::T, y::T) where {T<:XBU} = sizeof(T) >= 16 ? broken_mul_with_overflow(x, y) : checked_umul_int(x, y)
+mul_with_overflow(x::T, y::T) where {T<:XBS} =
+    (sizeof(T) >= 16 && VERSION < v"1.11-") ? broken_mul_with_overflow(x, y) : checked_smul_int(x, y)
+mul_with_overflow(x::T, y::T) where {T<:XBU} =
+    (sizeof(T) >= 16 && VERSION < v"1.11-") ? broken_mul_with_overflow(x, y) : checked_umul_int(x, y)
 
 # cf. base/checked.jl
 # TODO: check whether the specific implementation for [U]Int128 is better suited here
