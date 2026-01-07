@@ -55,6 +55,10 @@ https://github.com/JuliaLang/julia/pull/33283).
 
 ## Release notes
 
+### v0.3.7
+
+*  fix `mul_with_overflow` for unsigned types larger than 16 bytes ([#59](https://github.com/rfourquet/BitIntegers.jl/pull/59))
+
 ### v0.3.6
 
 * `unsigned` and `signed` can be called on all integer types ([#2](https://github.com/rfourquet/BitIntegers.jl/pull/2))
