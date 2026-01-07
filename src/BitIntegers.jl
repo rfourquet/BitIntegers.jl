@@ -483,9 +483,9 @@ sub_with_overflow(x::T, y::T) where {T<:XBS} = checked_ssub_int(x, y)
 sub_with_overflow(x::T, y::T) where {T<:XBU} = checked_usub_int(x, y)
 
 mul_with_overflow(x::T, y::T) where {T<:XBS} =
-    (sizeof(T) > 16 && VERSION < v"1.11-") ? broken_mul_with_overflow(x, y) : checked_smul_int(x, y)
+    (sizeof(T) >= 16 && VERSION < v"1.11-") ? broken_mul_with_overflow(x, y) : checked_smul_int(x, y)
 mul_with_overflow(x::T, y::T) where {T<:XBU} =
-    (sizeof(T) > 16 && VERSION < v"1.11-") ? broken_mul_with_overflow(x, y) : checked_umul_int(x, y)
+    (sizeof(T) >= 16 && VERSION < v"1.11-") ? broken_mul_with_overflow(x, y) : checked_umul_int(x, y)
 
 # cf. base/checked.jl
 # TODO: check whether the specific implementation for [U]Int128 is better suited here
@@ -495,13 +495,11 @@ function broken_mul_with_overflow(x::T, y::T) where T<:XBS
     r % T, f
 end
 
-#= broken
 function broken_mul_with_overflow(x::T, y::T) where T<:XBU
     r = widemul(x, y)
     f = r % T != r
     r % T, f
 end
-=#
 
 function checked_abs(x::XBS)
     r = ifelse(x<0, -x, x)
