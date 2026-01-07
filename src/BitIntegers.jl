@@ -495,11 +495,13 @@ function broken_mul_with_overflow(x::T, y::T) where T<:XBS
     r % T, f
 end
 
+#= broken
 function broken_mul_with_overflow(x::T, y::T) where T<:XBU
     r = widemul(x, y)
     f = r % T != r
     r % T, f
 end
+=#
 
 function checked_abs(x::XBS)
     r = ifelse(x<0, -x, x)
